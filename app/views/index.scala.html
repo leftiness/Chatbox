@@ -1,0 +1,29 @@
+@main("Chatbox") {
+
+    <div class="container">
+
+        <div class="navbar navbar-default navbar-fixed-top">
+            <h1 class="navbar-brand">Chatbox</h1>
+        </div>
+
+        <div class="row col-xs-12" id="chatContainer">
+            <div data-bind="foreach: messages">
+                <dl class="dl-horizontal">
+                    <dt data-bind="text: name"></dt>
+                    <dd data-bind="text: message"></dd>
+                </dl>
+            </div>
+        </div>
+    
+        <div class="navbar navbar-default navbar-fixed-bottom">
+            <textarea data-bind="value: message" 
+                class="col-xs-10 col-sm-11 nav-height noResize" 
+                type="text" 
+                placeholder="Hello..."></textarea>
+            <button data-bind="click: submit"
+                class="col-xs-2 col-sm-1 nav-height btn btn-primary">Send</button>
+        </div>
+
+    </div>
+
+}
