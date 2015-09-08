@@ -7,6 +7,12 @@ _vm =
     name: ko.observable('Anonymous12345')
     messages: ko.observableArray()
     message: ko.observable()
+    keydown: (data, event) ->
+        if event.keyCode == 13
+            this.submit()
+            false
+        else
+            true
     submit: ->
         if this.message().trim().length > 0
             request =

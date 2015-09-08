@@ -16,7 +16,7 @@
         </div>
     
         <div class="navbar navbar-default navbar-fixed-bottom">
-            <textarea data-bind="value: message" 
+            <textarea data-bind="value: message, valueUpdate: 'afterkeydown', event: { keypress: keydown }" 
                 class="col-xs-10 col-sm-11 nav-height noResize" 
                 type="text" 
                 placeholder="Hello..."></textarea>
