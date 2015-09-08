@@ -23,6 +23,11 @@ _vm =
         message = (this.message() || '').trim()
         if message.length > 0
             request = switch message.split(' ')[0]
+                when '/name'
+                    name: this.name()
+                    room: this.room()
+                    change: message.slice(6)
+                    type: 'name'
                 else
                     name: this.name()
                     room: this.room()
@@ -36,6 +41,8 @@ _vm =
         switch response.type
             when 'message'
                 this.messages.push response
+            when 'name'
+                this.name response.change
     
 init_ws = ->
     def = Q.defer()

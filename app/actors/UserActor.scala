@@ -31,6 +31,13 @@ class UserActor(registrar: ActorRef, out: ActorRef) extends Actor {
             Logger.debug(s"Received a JSON: $msg")
             try {
                 (msg \ "type").get.as[String] match {
+                    case "name" =>
+                        Logger.debug("JSON is a name change")
+                        val name = (msg \ "name").get.as[String]
+                        val room = (msg \ "room").get.as[String]
+                        val change = (msg \ "change").get.as[String]
+                        Logger.debug(s"Sending name change to registrar: $name, $room, $change")
+                        registrar ! Name(name, room, change)
                     case "message" =>
                         Logger.debug(s"JSON is a message")
                         val name = (msg \ "name").get.as[String]
@@ -53,10 +60,13 @@ class UserActor(registrar: ActorRef, out: ActorRef) extends Actor {
                 "type" -> JsString("message")
             ))
             out ! json
+        case Name(name: String, room: String, change: String) =>
+            Logger.debug(s"Sending a name change: $name, $room, $change")
             val json: JsValue = JsObject(Seq(
                 "name" -> JsString(name),
                 "room" -> JsString(room),
-                "message" -> JsString(message)
+                "change" -> JsString(change),
+                "type" -> JsString("name")
             ))
             out ! json
     }
