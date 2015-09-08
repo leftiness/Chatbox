@@ -1,12 +1,12 @@
 package controllers
 
-import play.api._
-import play.api.mvc._
-import play.api.Play.current
+import akka.actor._
 import play.api.libs.json._
 import play.api.Logger
-import akka.actor._
-import actors._
+import play.api.mvc._
+import play.api.Play.current
+
+import actors.{RegistrarActor, UserActor}
 
 
 class Application extends Controller {

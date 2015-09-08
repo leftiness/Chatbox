@@ -1,12 +1,9 @@
 package actors
 
-import scala.concurrent._
-import scala.concurrent.duration._
-import ExecutionContext.Implicits.global
+import akka.actor._
 import play.api.libs.json._
 import play.api.Logger
-import akka.actor._
-import akka.util.Timeout
+
 import messages._
 
 object UserActor {

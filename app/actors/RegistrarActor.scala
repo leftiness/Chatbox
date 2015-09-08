@@ -1,11 +1,11 @@
 package actors
 
 import akka.actor._
-import messages._
 import play.api.Logger
+import play.api.Play.current
 import scala.collection.mutable._
-import scala.concurrent._
-import ExecutionContext.Implicits.global
+
+import messages._
 
 class RegistrarActor extends Actor {
     val registry = new HashMap[String, Map[String, ActorRef]]()
