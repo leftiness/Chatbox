@@ -14,18 +14,20 @@ _vm =
         else
             true
     submit: ->
-        if this.message().trim().length > 0
-            request =
-                name: this.name()
-                message: this.message().trim()
-                room: this.room()
+        message = (this.message() || '').trim()
+        if message.length > 0
+            request = switch message.split(' ')[0]
+                else
+                    name: this.name()
+                    room: this.room()
+                    message: message
+                    type: 'message'
             _ws.send JSON.stringify request
             this.message ''
-    receive: (message) -> 
-        this.messages.push message
-        # TODO Instead of blindly pushing message, look at what is in the message and act upon it.
-        # For example, if I'm sending you your automatically assigned name, then that's not something
-        # that has to go immediately on the chat log. I need to get and save that name, too.
+    receive: (response) ->
+        switch response.type
+            when 'message'
+                this.messages.push response
     
 init_ws = ->
     def = Q.defer()
