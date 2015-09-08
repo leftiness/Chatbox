@@ -18,6 +18,15 @@ class UserActor(registrar: ActorRef, out: ActorRef) extends Actor {
 
     var name = "Anonymous12345" // TODO Get name from an actor. Send it out to the socket.
     
+    // TODO 
+    // Help command to tell them about available commands.
+    // Ban, kick, mute, and promote commands.
+    // First user into room is the creator.
+    // Create can kick and ban and promote other users.
+    // Promoted users can just kick, ban, and mute.. can't kick, ban, or mute creator or other promoted users.
+    // Last user to leave room... room is deleted.
+    // Creator can put a password on a room and change it.
+    
     override def preStart() = {
         Logger.info(s"UserActor $self.path is starting up")
     }

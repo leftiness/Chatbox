@@ -40,6 +40,8 @@ class RegistrarActor extends Actor {
         return (System.currentTimeMillis / 1000).toString()
     }
     
+    // TODO There's quite a bit of repetitive code here...
+    
     def receive = {
         case Join(room: String) =>
             Logger.debug(s"Received a join: $sender.path $room")

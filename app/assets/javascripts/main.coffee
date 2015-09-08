@@ -1,5 +1,4 @@
-#TODO Room
-#TODO Get name from websocket
+#TODO Rooms in the UI
 #TODO knockout for keyup event to send message
 
 _debug = true
