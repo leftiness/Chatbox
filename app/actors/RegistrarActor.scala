@@ -23,6 +23,10 @@ class RegistrarActor extends Actor {
         return s"$name has joined the room"
     }
     
+    def userLeft(name: String): String = {
+        return s"$name has left the room"
+    }
+    
     def userChangedName(name: String, change: String): String = {
         return s"$name is now known as $change"
     }
@@ -58,6 +62,28 @@ class RegistrarActor extends Actor {
                     registry += (room -> Map(name -> sender))
                     Logger.debug(s"Alerting users in $room of $name joining")
                     sender ! Message(registrar, room, userJoined(name))
+            }
+        case Leave(name: String, room: String) =>
+            Logger.debug(s"Received a leave: $name, $room")
+            registry get room match {
+                case Some(users: Map[String, ActorRef]) =>
+                    Logger.debug(s"Removing $name from $room")
+                    users -= name
+                    for ((username: String, ref: ActorRef) <- users) {
+                        Logger.debug(s"Alerting users in $room of $name leaving")
+                        ref ! Message(registrar, room, userLeft(name))
+                    }
+                case None =>
+                    Logger.debug("Room $room doesn't exist")
+            }
+        case Disconnect(name: String) =>
+            // TODO This is bad. I don't like looping through all rooms to find instances of the user.
+            // I should have a better data structure.
+            Logger.debug(s"Received a disconnect: $name")
+            for ((room: String, users: Map[String, ActorRef]) <- registry) {
+                if (users contains name)
+                    Logger.debug(s"Forwarding leave alert to users in $room")
+                    self forward Leave(name, room)
             }
         case Name(name: String, room: String, change: String) =>
             Logger.debug(s"Received a name change: $name, $change")

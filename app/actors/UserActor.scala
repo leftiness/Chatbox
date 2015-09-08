@@ -24,6 +24,7 @@ class UserActor(registrar: ActorRef, out: ActorRef) extends Actor {
     
     override def postStop() = {
         Logger.info(s"UserActor $self.path is shutting down")
+        registrar ! Disconnect(name)
     }
     
     def receive = {
@@ -36,6 +37,17 @@ class UserActor(registrar: ActorRef, out: ActorRef) extends Actor {
                         val room = (msg \ "room").get.as[String]
                         Logger.debug(s"Sending join to registrar: $name, $room")
                         registrar ! Join(room)
+                    case "leave" =>
+                        Logger.debug("JSON is a leave")
+                        val name = (msg \ "name").get.as[String]
+                        val room = (msg \ "room").get.as[String]
+                        Logger.debug(s"Sending leave to registrar: $name, $room")
+                        registrar ! Leave(name, room)
+                    case "disconnect" =>
+                        Logger.debug("JSON is a disconnect")
+                        val name = (msg \ "name").get.as[String]
+                        Logger.debug(s"Sending disconnect to registrar: $name")
+                        registrar ! Disconnect(name)
                     case "name" =>
                         Logger.debug("JSON is a name change")
                         val name = (msg \ "name").get.as[String]

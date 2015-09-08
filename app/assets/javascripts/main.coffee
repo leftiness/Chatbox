@@ -26,6 +26,13 @@ _vm =
                 when '/join'
                     room: message.slice(6)
                     type: 'join'
+                when '/leave'
+                    name: this.name()
+                    room: message.slice(7)
+                    type: 'leave'
+                when '/disconnect'
+                    name: this.name()
+                    type: 'disconnect'
                 when '/name'
                     name: this.name()
                     room: this.room()
