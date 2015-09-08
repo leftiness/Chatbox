@@ -22,15 +22,18 @@ _vm =
         # that has to go immediately on the chat log. I need to get and save that name, too.
     
 init_ws = ->
-    def = $.Deferred()
+    def = Q.defer()
     # TODO When the client is not the same machine as the server, I'll need the IP of that server here...
-    ws = new WebSocket('ws://localhost:9000/chat') 
-    ws.onmessage = (event) -> _vm.receive JSON.parse event.data
+    host = 'ws://localhost:9000/chat'
+    ws = new WebSocket(host) 
+    ws.onmessage = (event) -> 
+        _vm.receive JSON.parse event.data
     ws.onerror = (err) -> 
         console.error err
         #TODO Reconnect strategy instead of just console.error()
-    ws.onopen = -> def.resolve ws
-    def.promise()
+    ws.onopen = -> 
+        def.resolve ws
+    def.promise
 
 _ws = undefined
 init_ws().done (ws) -> _ws = ws
