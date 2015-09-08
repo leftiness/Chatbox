@@ -31,6 +31,11 @@ class UserActor(registrar: ActorRef, out: ActorRef) extends Actor {
             Logger.debug(s"Received a JSON: $msg")
             try {
                 (msg \ "type").get.as[String] match {
+                    case "join" =>
+                        Logger.debug("JSON is a join")
+                        val room = (msg \ "room").get.as[String]
+                        Logger.debug(s"Sending join to registrar: $name, $room")
+                        registrar ! Join(room)
                     case "name" =>
                         Logger.debug("JSON is a name change")
                         val name = (msg \ "name").get.as[String]

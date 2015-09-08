@@ -19,6 +19,10 @@ class RegistrarActor extends Actor {
         Logger.info(s"RegistrarActor $self.path is shutting down")
     }
     
+    def userJoined(name: String): String = {
+        return s"$name has joined the room"
+    }
+    
     def userChangedName(name: String, change: String): String = {
         return s"$name is now known as $change"
     }
@@ -27,7 +31,34 @@ class RegistrarActor extends Actor {
         return s"The name $name is already taken"
     }
     
+    def getUniqueId(): String = {
+        // TODO This is not a proper unique id...
+        return (System.currentTimeMillis / 1000).toString()
+    }
+    
     def receive = {
+        case Join(room: String) =>
+            Logger.debug(s"Received a join: $sender.path $room")
+            registry get room match {
+                case Some(users: Map[String, ActorRef]) =>
+                    val name = getUniqueId()
+                    Logger.debug(s"Giving sender the name $name")
+                    sender ! Name("", room, name)
+                    Logger.debug(s"Adding $name to $room")
+                    users += (name -> sender)
+                    for ((username: String, ref: ActorRef) <- users) {
+                        Logger.debug(s"Alerting users in $room of $name joining")
+                        ref ! Message(registrar, room, userJoined(name))
+                    }
+                case None =>
+                    val name = getUniqueId()
+                    Logger.debug(s"Giving sender the name $name")
+                    sender ! Name("", room, name)
+                    Logger.debug(s"Creating room $room")
+                    registry += (room -> Map(name -> sender))
+                    Logger.debug(s"Alerting users in $room of $name joining")
+                    sender ! Message(registrar, room, userJoined(name))
+            }
         case Name(name: String, room: String, change: String) =>
             Logger.debug(s"Received a name change: $name, $change")
             registry get room match {
@@ -58,6 +89,7 @@ class RegistrarActor extends Actor {
                     }
                 case None =>
                     Logger.debug(s"$name is attempting to message $room which doesn't exist")
+                    self forward Join(room)
             }
     }
 }

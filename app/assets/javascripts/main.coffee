@@ -23,6 +23,9 @@ _vm =
         message = (this.message() || '').trim()
         if message.length > 0
             request = switch message.split(' ')[0]
+                when '/join'
+                    room: message.slice(6)
+                    type: 'join'
                 when '/name'
                     name: this.name()
                     room: this.room()
