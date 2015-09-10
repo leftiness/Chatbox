@@ -1,96 +1,137 @@
 package actors
 
 import akka.actor._
-import play.api.libs.json._
+import anorm._
+import anorm.SqlParser._
+import java.util.Date
+import play.api.db._
 import play.api.Logger
+import play.api.Play.current
 
 import messages._
 
-object UserActor {
-    def props(registrar: ActorRef, out: ActorRef) = Props(new UserActor(registrar, out))
-}
-
-class UserActor(registrar: ActorRef, out: ActorRef) extends Actor {
-    import UserActor._
-
-    var name = "Anonymous12345" // TODO Get name from an actor. Send it out to the socket.
-    
-    // TODO 
-    // Help command to tell them about available commands.
-    // Ban, kick, mute, and promote commands.
-    // First user into room is the creator.
-    // Create can kick and ban and promote other users.
-    // Promoted users can just kick, ban, and mute.. can't kick, ban, or mute creator or other promoted users.
-    // Last user to leave room... room is deleted.
-    // Creator can put a password on a room and change it.
+class UserActor() extends Actor {
+    val registrar = context.parent
     
     override def preStart() = {
-        Logger.info(s"UserActor $self.path is starting up")
+        Logger info s"UserActor $self.path is starting up"
     }
     
     override def postStop() = {
-        Logger.info(s"UserActor $self.path is shutting down")
-        registrar ! Disconnect(name)
+        Logger info s"UserActor $self.path is shutting down"
+    }
+    
+    object User {
+        val parser: RowParser[User] = {
+            get[BigInt]("users.id") ~
+            get[BigInt]("users.room") ~
+            str("users.name") ~
+            date("users.joined") ~
+            bool("users.admin") ~
+            bool("users.banned") map {
+                case user ~ room ~ name ~ joined ~ admin ~ banned =>
+                    messages.User(user, room, name, joined, admin, banned)
+            }
+        }
+    }
+    
+    def joinRoom(roomId: BigInt): Option[BigInt] = {
+        Logger debug s"Joining room: $roomId"
+        DB.withConnection { implicit c =>
+            return SQL"insert into users (room) values ('$roomId')"
+                .executeInsert(get[BigInt]("id").singleOpt)
+        }
+    }
+    
+    def leaveRoom(userId: BigInt, roomId: BigInt): Integer = {
+        Logger debug s"Leaving room: $userId, $roomId"
+        DB.withConnection { implicit c =>
+            return SQL"delete from users where id = '$userId' and room = '$roomId'"
+                .executeUpdate()
+        }
+    }
+    
+    def getUserById(userId: BigInt): Option[User] = {
+        Logger debug s"Getting user: $userId"
+        DB.withConnection { implicit c =>
+            return SQL"""select (id, room, name, joined, admin, banned) 
+                from users
+                where id = '$userId'
+                """
+                .as(User.parser.singleOpt)
+        }
+    }
+    
+    def getUserByName(userName: String, roomId: BigInt): Option[User] = {
+        Logger debug s"Getting user: $userName"
+        DB withConnection { implicit c =>
+            return SQL"""select (id, room, name, joined, admin, banned)
+                from users
+                where name = '$userName' and room = '$roomId'"""
+                .as(User.parser.singleOpt)
+        }
+    }
+    
+    def getUsers(roomId: BigInt): List[User] = {
+        Logger debug s"Getting users in room: $roomId"
+        DB.withConnection { implicit c =>
+            return SQL"""select (id, room, name, joined, admin, banned)
+                from users
+                where room = '$roomId'
+                """
+                .as(User.parser.*)
+        }
+    }
+    
+    def nameUser(userId: BigInt, userName: String, roomId: BigInt): Integer = {
+        Logger debug s"Renaming user: $userId, $userName"
+        DB.withConnection { implicit c =>
+            return SQL"""update users set name = '$userName' 
+                where id = '$userId' and name = '$userName'"""
+                .executeUpdate()
+        }
+    }
+    
+    def promoteUser(userId: BigInt): Integer = {
+        Logger debug s"Promoting user: $userId"
+        DB.withConnection { implicit c =>
+            return SQL"update users set admin = true where id = '$userId'"
+                .executeUpdate()
+        }
+    }
+    
+    def banUser(userId: BigInt): Integer = {
+        Logger debug s"Banning user: $userId"
+        DB.withConnection { implicit c =>
+            return SQL"update users set banned = true where id = '$userId'"
+                .executeUpdate()
+        }
     }
     
     def receive = {
-        case msg: JsValue =>
-            Logger.debug(s"Received a JSON: $msg")
-            try {
-                (msg \ "type").get.as[String] match {
-                    case "join" =>
-                        Logger.debug("JSON is a join")
-                        val room = (msg \ "room").get.as[String]
-                        Logger.debug(s"Sending join to registrar: $name, $room")
-                        registrar ! Join(room)
-                    case "leave" =>
-                        Logger.debug("JSON is a leave")
-                        val name = (msg \ "name").get.as[String]
-                        val room = (msg \ "room").get.as[String]
-                        Logger.debug(s"Sending leave to registrar: $name, $room")
-                        registrar ! Leave(name, room)
-                    case "disconnect" =>
-                        Logger.debug("JSON is a disconnect")
-                        val name = (msg \ "name").get.as[String]
-                        Logger.debug(s"Sending disconnect to registrar: $name")
-                        registrar ! Disconnect(name)
-                    case "name" =>
-                        Logger.debug("JSON is a name change")
-                        val name = (msg \ "name").get.as[String]
-                        val room = (msg \ "room").get.as[String]
-                        val change = (msg \ "change").get.as[String]
-                        Logger.debug(s"Sending name change to registrar: $name, $room, $change")
-                        registrar ! Name(name, room, change)
-                    case "message" =>
-                        Logger.debug(s"JSON is a message")
-                        val name = (msg \ "name").get.as[String]
-                        val room = (msg \ "room").get.as[String]
-                        val message = (msg \ "message").get.as[String]
-                        Logger.debug(s"Sending message to registrar: $name, $room, $message")
-                        registrar ! Message(name, room, message)
-                }
-            } catch {
-                case js: JsResultException =>
-                    Logger.error(s"Received a bad message: $msg", js)
-                    // sender ! JSON identifying a bad message
+        case JoinRoom(roomId: BigInt) =>
+            Logger debug s"Received a JoinRoom: $roomId"
+            sender ! joinRoom(roomId)
+        case LeaveRoom(userId: BigInt, roomId: BigInt) =>
+            Logger debug s"Received a LeaveRoom: $userId, $roomId"
+            sender ! leaveRoom(userId, roomId)
+        case GetUser(userId: BigInt) =>
+            Logger debug s"Received a GetUser: $userId"
+            sender ! getUserById(userId)
+        case GetUsers(roomId: BigInt) =>
+            Logger debug s"Received a GetUsers: $roomId"
+            sender ! getUsers(roomId)
+        case NameUser(userId: BigInt, userName: String, roomId: BigInt) =>
+            Logger debug s"Received a NameUser: $userId, $userName, $roomId"
+            getUserByName(userName, roomId) match {
+                case None => sender ! nameUser(userId, userName, roomId)
             }
-        case Message(name: String, room: String, message: String) =>
-            Logger.debug(s"Sending a message: $name, $room, $message")
-            val json: JsValue = JsObject(Seq(
-                "name" -> JsString(name),
-                "room" -> JsString(room),
-                "message" -> JsString(message),
-                "type" -> JsString("message")
-            ))
-            out ! json
-        case Name(name: String, room: String, change: String) =>
-            Logger.debug(s"Sending a name change: $name, $room, $change")
-            val json: JsValue = JsObject(Seq(
-                "name" -> JsString(name),
-                "room" -> JsString(room),
-                "change" -> JsString(change),
-                "type" -> JsString("name")
-            ))
-            out ! json
+        case PromoteUser(userId: BigInt) =>
+            Logger debug s"Received a PromoteUser: $userId"
+            sender ! promoteUser(userId)
+        case BanUser(userId: BigInt) =>
+            Logger debug s"Received a BanUser: $userId"
+            sender ! banUser(userId)
     }
+
 }
