@@ -123,6 +123,7 @@ class UserActor() extends Actor {
         case NameUser(userId: BigInt, userName: String, roomId: BigInt) =>
             Logger debug s"Received a NameUser: $userId, $userName, $roomId"
             getUserByName(userName, roomId) match {
+                case Some(user) => // TODO The user exists. Fail this request.
                 case None => sender ! nameUser(userId, userName, roomId)
             }
         case PromoteUser(userId: BigInt) =>
