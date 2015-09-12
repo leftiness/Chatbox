@@ -3,7 +3,6 @@ package actors
 import akka.actor._
 import anorm._
 import anorm.SqlParser._
-import java.util.Date
 import play.api.db._
 import play.api.Logger
 import play.api.Play.current

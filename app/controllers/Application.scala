@@ -8,13 +8,10 @@ import play.api.Logger
 import play.api.mvc._
 import play.api.Play.current
 import scala.concurrent.duration._
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
 
 import scala.concurrent.Await
 
 import actors._
-import messages._
 
 class Application extends Controller {
     
