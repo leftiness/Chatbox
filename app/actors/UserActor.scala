@@ -1,16 +1,22 @@
 package actors
 
 import akka.actor._
+import akka.pattern.ask
+import akka.util.Timeout
 import anorm._
 import anorm.SqlParser._
 import play.api.db._
 import play.api.Logger
 import play.api.Play.current
+import scala.concurrent.duration._
+import scala.concurrent.ExecutionContext.Implicits.global
 
 import messages._
 
 class UserActor() extends Actor {
     val registrar = context.parent
+
+    implicit val timeout = Timeout(5 seconds)
     
     override def preStart() = {
         Logger info s"UserActor $self.path is starting up"
@@ -27,17 +33,18 @@ class UserActor() extends Actor {
             str("users.name") ~
             date("users.joined") ~
             bool("users.admin") ~
-            bool("users.banned") map {
-                case user ~ room ~ name ~ joined ~ admin ~ banned =>
-                    messages.User(user, room, name, joined, admin, banned)
+            bool("users.banned") ~
+            str("users.path") map {
+                case user ~ room ~ name ~ joined ~ admin ~ banned ~ path =>
+                    messages.User(user, room, name, joined, admin, banned, path)
             }
         }
     }
     
-    def joinRoom(roomId: BigInt): Option[BigInt] = {
+    def joinRoom(roomId: BigInt, path: String): Option[BigInt] = {
         Logger debug s"Joining room: $roomId"
         DB.withConnection { implicit c =>
-            return SQL"insert into users (room) values ('$roomId')"
+            return SQL"insert into users (room, path) values ('$roomId', '$path')"
                 .executeInsert(get[BigInt]("id").singleOpt)
         }
     }
@@ -110,7 +117,10 @@ class UserActor() extends Actor {
     def receive = {
         case JoinRoom(roomId: BigInt) =>
             Logger debug s"Received a JoinRoom: $roomId"
-            sender ! joinRoom(roomId)
+            registrar ? GetRoom(roomId) onSuccess {
+                case Some(room: Room) =>
+                    sender ! joinRoom(roomId, sender.path.toSerializationFormat)
+            }
         case LeaveRoom(userId: BigInt, roomId: BigInt) =>
             Logger debug s"Received a LeaveRoom: $userId, $roomId"
             sender ! leaveRoom(userId, roomId)

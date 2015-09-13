@@ -20,5 +20,5 @@ case class NameRoom(roomId: BigInt, roomName: String)
 case class DeleteRoom(roomId: BigInt)
 
 case class Message(userId: BigInt, userName: String, roomId: BigInt, messageText: String)
-case class User(userId: BigInt, roomId: BigInt, userName: String, joinDate: Date, isAdmin: Boolean, isBanned: Boolean)
+case class User(userId: BigInt, roomId: BigInt, userName: String, joinDate: Date, isAdmin: Boolean, isBanned: Boolean, actorPath: String)
 case class Room(roomId: BigInt, roomName: String)
