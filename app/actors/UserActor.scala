@@ -16,7 +16,7 @@ import messages._
 class UserActor() extends Actor {
     val registrar = context.parent
 
-    implicit val timeout = Timeout(5 seconds)
+    implicit val timeout = Timeout(5.seconds)
     
     override def preStart() = {
         Logger info s"UserActor $self.path is starting up"
@@ -28,132 +28,202 @@ class UserActor() extends Actor {
     
     object User {
         val parser: RowParser[User] = {
-            get[BigInt]("users.id") ~
-            get[BigInt]("users.room") ~
+            str("users.path") ~
+            str("users.room") ~
             str("users.name") ~
             date("users.joined") ~
             bool("users.admin") ~
-            bool("users.banned") ~
-            str("users.path") map {
-                case user ~ room ~ name ~ joined ~ admin ~ banned ~ path =>
-                    messages.User(user, room, name, joined, admin, banned, path)
+            bool("users.banned") map {
+                case path ~ room ~ name ~ joined ~ admin ~ banned =>
+                    messages.User(path, room, name, joined, admin, banned)
             }
         }
     }
     
-    def joinRoom(roomId: BigInt, path: String): Option[BigInt] = {
+    def joinRoom(path: String, roomId: String): Option[String] = {
         Logger debug s"Joining room: $roomId"
         DB.withConnection { implicit c =>
-            return SQL"insert into users (room, path) values ('$roomId', '$path')"
-                .executeInsert(get[BigInt]("id").singleOpt)
+            return SQL"insert into users (path, room) values ('$path', '$roomId')"
+                .executeInsert(str("users.path").singleOpt)
         }
     }
     
-    def leaveRoom(userId: BigInt, roomId: BigInt): Integer = {
-        Logger debug s"Leaving room: $userId, $roomId"
+    def leaveRoom(path: String, roomId: String): Integer = {
+        Logger debug s"Leaving room: $path, $roomId"
         DB.withConnection { implicit c =>
-            return SQL"delete from users where id = '$userId' and room = '$roomId'"
+            return SQL"delete from users where path = '$path' and room = '$roomId'"
                 .executeUpdate()
         }
     }
-    
-    def getUserById(userId: BigInt): Option[User] = {
-        Logger debug s"Getting user: $userId"
+
+    def getUserByPath(path: String, roomId: String): Option[User] = {
+        Logger debug s"Getting user: $path, $roomId"
         DB.withConnection { implicit c =>
-            return SQL"""select (id, room, name, joined, admin, banned) 
+            return SQL"""select (path, room, name, joined, admin, banned)
                 from users
-                where id = '$userId'
+                where path = '$path'
+                and room = '$roomId'
                 """
                 .as(User.parser.singleOpt)
         }
     }
     
-    def getUserByName(userName: String, roomId: BigInt): Option[User] = {
-        Logger debug s"Getting user: $userName"
+    def getUserByName(userName: String, roomId: String): Option[User] = {
+        Logger debug s"Getting user: $userName, $roomId"
         DB withConnection { implicit c =>
-            return SQL"""select (id, room, name, joined, admin, banned)
+            return SQL"""select (path, room, name, joined, admin, banned)
                 from users
-                where name = '$userName' and room = '$roomId'"""
+                where name = '$userName' and room = '$roomId'
+                """
                 .as(User.parser.singleOpt)
         }
     }
     
-    def getUsers(roomId: BigInt): List[User] = {
+    def getUsers(roomId: String): List[User] = {
         Logger debug s"Getting users in room: $roomId"
         DB.withConnection { implicit c =>
-            return SQL"""select (id, room, name, joined, admin, banned)
+            return SQL"""select (path, room, name, joined, admin, banned)
                 from users
                 where room = '$roomId'
                 """
                 .as(User.parser.*)
         }
     }
-    
-    def nameUser(userId: BigInt, userName: String, roomId: BigInt): Integer = {
-        Logger debug s"Renaming user: $userId, $userName"
-        DB.withConnection { implicit c =>
-            return SQL"""update users set name = '$userName' 
-                where id = '$userId' and room = '$roomId'"""
-                .executeUpdate()
-        }
-    }
-    
-    def promoteUser(userId: BigInt): Integer = {
-        Logger debug s"Promoting user: $userId"
-        DB.withConnection { implicit c =>
-            return SQL"update users set admin = true where id = '$userId'"
-                .executeUpdate()
-        }
-    }
-    
-    def banUser(userId: BigInt): Integer = {
-        Logger debug s"Banning user: $userId"
-        DB.withConnection { implicit c =>
-            return SQL"update users set banned = true where id = '$userId'"
-                .executeUpdate()
-        }
-    }
 
-    def deleteUser(actorPath: String): Integer = {
-        Logger debug s"Deleting user: $actorPath"
+    def getUsersByPath(actorPath: String): List[User] = {
+        Logger debug s"Getting users with path: $actorPath"
         DB.withConnection { implicit c =>
-            return SQL"delete from users where path = '$actorPath'"
+            return SQL"""select (path, room, name, joined, admin, banned)
+                from users
+                where path = '$actorPath'
+                """
+                .as(User.parser.*)
+        }
+    }
+    
+    def nameUser(path: String, userName: String, roomId: String): Integer = {
+        Logger debug s"Renaming user: $path, $userName, $roomId"
+        DB.withConnection { implicit c =>
+            return SQL"""update users set name = '$userName'
+                where path = '$path' and room = '$roomId'
+                """
+                .executeUpdate()
+        }
+    }
+    
+    def promoteUser(userName: String, roomId: String): Integer = {
+        Logger debug s"Promoting user: $userName, $roomId"
+        DB.withConnection { implicit c =>
+            return SQL"""update users set admin = true
+                where name = '$userName'"
+                and room = '$roomId'
+                """
+                .executeUpdate()
+        }
+    }
+    
+    def banUser(userName: String, roomId: String): Integer = {
+        Logger debug s"Banning user: $userName, $roomId"
+        DB.withConnection { implicit c =>
+            return SQL"""update users set banned = true
+                where username = '$userName'
+                and room = '$roomId'
+                """
                 .executeUpdate()
         }
     }
     
     def receive = {
-        case JoinRoom(roomId: BigInt, actorPath: String) =>
+        case JoinRoom(roomId: String) =>
             Logger debug s"Received a JoinRoom: $roomId"
+            val path = sender().path.toSerializationFormat
             registrar ? GetRoom(roomId) onSuccess {
                 case Some(room: Room) =>
-                    sender ! joinRoom(roomId, actorPath)
-                // TODO case None => registrar forward TriedToJoinNonexistantRoom(roomId, actorPath)
+                    joinRoom(roomId, path) match {
+                        case Some(_: String) => // TODO registrar forward UserJoined(stuff that you need to send to each user to show a message and update the UI)
+                        case None => sender ! GlobalSystemMessage(s"Failed to join room: $roomId")
+                    }
+                case None => sender ! GlobalSystemMessage(s"Failed to join room: $roomId")
+
             }
-        case LeaveRoom(userId: BigInt, roomId: BigInt) =>
-            Logger debug s"Received a LeaveRoom: $userId, $roomId"
-            sender ! leaveRoom(userId, roomId)
-        case GetUser(userId: BigInt) =>
-            Logger debug s"Received a GetUser: $userId"
-            sender ! getUserById(userId)
-        case GetUsers(roomId: BigInt) =>
+        case LeaveRoom(roomId: String) =>
+            Logger debug s"Received a LeaveRoom: $roomId"
+            val path = sender().path.toSerializationFormat
+            val result = leaveRoom(path, roomId)
+            if (result == 0)
+                // TODO More lame if statements...
+                sender ! GlobalSystemMessage(s"Failed to leave room: $roomId")
+            else
+                println("todo")
+                // TODO registrar forward UserLeft(stuff for every user in room)
+
+        case GetUser(actorPath: String, roomId: String) =>
+            Logger debug s"Received a GetUser: $actorPath, $roomId"
+            sender ! getUserByPath(actorPath, roomId)
+        case GetUsers(roomId: String) =>
             Logger debug s"Received a GetUsers: $roomId"
             sender ! getUsers(roomId)
-        case NameUser(userId: BigInt, userName: String, roomId: BigInt) =>
-            Logger debug s"Received a NameUser: $userId, $userName, $roomId"
+        case NameUser(userName: String, roomId: String) =>
+            Logger debug s"Received a NameUser: $userName, $roomId"
+            val path = sender().path.toSerializationFormat
             getUserByName(userName, roomId) match {
-                case Some(user) => sender ! 0
-                case None => sender ! nameUser(userId, userName, roomId)
+                case Some(_: User) => sender ! SystemMessage(roomId, s"Name $userName is already taken")
+                case None =>
+                    val result = nameUser(path, userName, roomId)
+                    if (result == 0)
+                        // TODO More lame if statements...
+                        sender ! SystemMessage(roomId, s"Failed to take name $userName")
+                    else
+                        println("todo")
+                        // TODO registrar forward RenamedUser(stuff for every user in room)
             }
-        case PromoteUser(userId: BigInt) =>
-            Logger debug s"Received a PromoteUser: $userId"
-            sender ! promoteUser(userId)
-        case BanUser(userId: BigInt) =>
-            Logger debug s"Received a BanUser: $userId"
-            sender ! banUser(userId)
-        case DeleteUser(actorPath: String) =>
+        case PromoteUser(userName: String, roomId: String) =>
+            Logger debug s"Received a PromoteUser: $userName"
+            val path = sender().path.toSerializationFormat
+            getUserByPath(path, roomId) match {
+                case Some(user: User) =>
+                    if (user.isAdmin) {
+                        // TODO If statements feel wrong... isn't there something cool scala can do here?
+                        val result = promoteUser(userName, roomId)
+                        if (result == 0) {
+                            sender ! SystemMessage(roomId, s"Failed to promote user $userName")
+                        } else {
+                            // TODO registrar forward PromotedUser(stuff for every user in room)
+                        }
+                    } else {
+                        sender ! SystemMessage(roomId, s"Failed to promote user $userName")
+                    }
+                case None => sender ! SystemMessage(roomId, s"Failed to promote user $userName")
+            }
+        case BanUser(userName: String, roomId: String) =>
+            Logger debug s"Received a BanUser: $userName"
+            val path = sender().path.toSerializationFormat
+            getUserByPath(path, roomId) match {
+                case Some(user: User) =>
+                    if (user.isAdmin) {
+                        // TODO If statements feel wrong... isn't there something cool scala can do here?
+                        val result = banUser(userName, roomId)
+                        if (result == 0) {
+                            sender ! SystemMessage(roomId, s"Failed to ban user $userName")
+                        } else {
+                            // TODO registrar forward BannedUser(stuff for every user in room)
+                        }
+                    } else {
+                        sender ! SystemMessage(roomId, s"Failed to ban user $userName")
+                    }
+                case None => sender ! SystemMessage(roomId, s"Failed to ban user $userName")
+            }
+        case DisconnectUser(actorPath: String) =>
             Logger debug s"Received a DeleteUser: $actorPath"
-            sender ! deleteUser(actorPath)
+            getUsersByPath(actorPath) match {
+                case users: List[User] =>
+                    users.map(u => (u.userName, u.roomId)) foreach { user =>
+                        val userName = user._1
+                        val roomId = user._2
+                        // TODO registrar ! UserLeft(userName, roomId, other stuff for all users to update UI???)
+                        leaveRoom(actorPath, roomId)
+                    }
+            }
     }
 
 }

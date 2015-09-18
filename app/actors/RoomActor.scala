@@ -22,22 +22,23 @@ class RoomActor() extends Actor {
     
     object Room {
         val parser: RowParser[Room] = {
-            get[BigInt]("rooms.id") ~
+            str("rooms.id") ~
             str("rooms.name") map {
                 case id ~ name => messages.Room(id, name)
             }
         }
     }
     
-    def newRoom(roomName: String): Option[BigInt] = {
+    def newRoom(roomName: String): Option[Long] = {
+        // TODO Use a string hash instead of an incrementing bigint for room ids
         Logger debug s"Creating new room: $roomName"
         DB.withConnection { implicit c =>
             return SQL"insert into rooms (name) values ($roomName)"
-                .executeInsert(get[BigInt]("id").singleOpt)
+                .executeInsert(long("rooms.id").singleOpt)
         }
     }
     
-    def getRoom(roomId: BigInt): Option[Room] = {
+    def getRoom(roomId: String): Option[Room] = {
         Logger debug s"Retrieving room: $roomId"
         DB.withConnection { implicit c =>
             return SQL"select (id) from rooms where id = '$roomId'"
@@ -45,7 +46,7 @@ class RoomActor() extends Actor {
         }
     }
     
-    def nameRoom(roomId: BigInt, roomName: String): Integer = {
+    def nameRoom(roomId: String, roomName: String): Integer = {
         Logger debug s"Renaming room: $roomId, $roomName"
         DB.withConnection { implicit c =>
             return SQL"update rooms set name = '$roomName' where id = '$roomId'"
@@ -53,7 +54,7 @@ class RoomActor() extends Actor {
         }
     }
     
-    def deleteRoom(roomId: BigInt): Integer = {
+    def deleteRoom(roomId: String): Integer = {
         Logger debug s"Deleting room: $roomId"
         DB.withConnection { implicit c =>
             return SQL"delete from rooms where id = '$roomId'"
@@ -65,13 +66,13 @@ class RoomActor() extends Actor {
         case NewRoom(roomName: String) =>
             Logger debug s"Received a NewRoom: $roomName"
             sender ! newRoom(roomName)
-        case GetRoom(roomId: BigInt) =>
+        case GetRoom(roomId: String) =>
             Logger debug s"Received a GetRoom: $roomId"
             sender ! getRoom(roomId)
-        case NameRoom(roomId: BigInt, roomName: String) =>
+        case NameRoom(roomId: String, roomName: String) =>
             Logger debug s"Received a NameRoom: $roomId, $roomName"
             sender ! nameRoom(roomId, roomName)
-        case DeleteRoom(roomId: BigInt) =>
+        case DeleteRoom(roomId: String) =>
             Logger debug s"Received a DeleteRoom: $roomId"
             sender ! deleteRoom(roomId)
     }

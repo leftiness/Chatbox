@@ -4,18 +4,18 @@
 
 create table rooms (
     id bigint not null auto_increment,
-    name varchar2(30) not null default id,
+    name varchar2 not null default id,
     primary key (id)
 );
 
 create table users (
-    id bigint not null auto_increment,
+    path varchar2 not null,
     room bigint not null,
-    name varchar2(30) not null default id,
+    name varchar2 not null default sysdate,
     joined timestamp not null default sysdate,
     admin boolean not null default false,
-    banned boolean not null defalse false,
-    primary key (id, room)
+    banned boolean not null default false,
+    primary key (path, room)
     foreign key (room) references (rooms.id)
 );  
  
