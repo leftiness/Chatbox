@@ -26,7 +26,7 @@ class RegistrarActor extends Actor {
         case OpenSocket(ref: ActorRef) =>
             Logger debug s"Received an OpenSocket: $ref.path"
             val socket = context actorOf Props(new SocketActor(ref))
-            context watch socket // TODO Remove from users table when the actor dies
+            context watch socket
             sender ! socket
         case JoinRoom(roomId: BigInt, actorPath: String) =>
             Logger debug s"Received a JoinRoom: $roomId, $actorPath"
@@ -70,5 +70,8 @@ class RegistrarActor extends Actor {
                     }
                 }
             }
+        case Terminated(ref: ActorRef) =>
+            Logger debug s"Received a Terminated: $ref.path"
+            user ! DeleteUser(ref.path.toSerializationFormat)
     }
 }

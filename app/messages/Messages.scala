@@ -13,6 +13,7 @@ case class GetUsers(roomId: BigInt)
 case class NameUser(userId: BigInt, userName: String, roomId: BigInt)
 case class PromoteUser(userId: BigInt)
 case class BanUser(userId: BigInt)
+case class DeleteUser(actorPath: String)
 
 case class NewRoom(roomName: String)
 case class GetRoom(roomId: BigInt)

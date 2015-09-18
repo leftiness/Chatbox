@@ -93,7 +93,7 @@ class UserActor() extends Actor {
         Logger debug s"Renaming user: $userId, $userName"
         DB.withConnection { implicit c =>
             return SQL"""update users set name = '$userName' 
-                where id = '$userId' and name = '$userName'"""
+                where id = '$userId' and room = '$roomId'"""
                 .executeUpdate()
         }
     }
@@ -113,6 +113,14 @@ class UserActor() extends Actor {
                 .executeUpdate()
         }
     }
+
+    def deleteUser(actorPath: String): Integer = {
+        Logger debug s"Deleting user: $actorPath"
+        DB.withConnection { implicit c =>
+            return SQL"delete from users where path = '$actorPath'"
+                .executeUpdate()
+        }
+    }
     
     def receive = {
         case JoinRoom(roomId: BigInt, actorPath: String) =>
@@ -120,6 +128,7 @@ class UserActor() extends Actor {
             registrar ? GetRoom(roomId) onSuccess {
                 case Some(room: Room) =>
                     sender ! joinRoom(roomId, actorPath)
+                // TODO case None => registrar forward TriedToJoinNonexistantRoom(roomId, actorPath)
             }
         case LeaveRoom(userId: BigInt, roomId: BigInt) =>
             Logger debug s"Received a LeaveRoom: $userId, $roomId"
@@ -133,7 +142,7 @@ class UserActor() extends Actor {
         case NameUser(userId: BigInt, userName: String, roomId: BigInt) =>
             Logger debug s"Received a NameUser: $userId, $userName, $roomId"
             getUserByName(userName, roomId) match {
-                case Some(user) => // TODO The user exists. Fail this request.
+                case Some(user) => sender ! 0
                 case None => sender ! nameUser(userId, userName, roomId)
             }
         case PromoteUser(userId: BigInt) =>
@@ -142,6 +151,9 @@ class UserActor() extends Actor {
         case BanUser(userId: BigInt) =>
             Logger debug s"Received a BanUser: $userId"
             sender ! banUser(userId)
+        case DeleteUser(actorPath: String) =>
+            Logger debug s"Received a DeleteUser: $actorPath"
+            sender ! deleteUser(actorPath)
     }
 
 }
