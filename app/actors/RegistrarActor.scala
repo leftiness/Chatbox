@@ -1,13 +1,18 @@
 package actors
 
 import akka.actor._
+import akka.pattern.ask
+import akka.util.Timeout
 import play.api.Logger
+import scala.concurrent.duration._
 
 import messages._
 
 class RegistrarActor extends Actor {
     val user = context actorOf Props[UserActor]
     val room = context actorOf Props[RoomActor]
+
+    implicit val timeout = Timeout(5.seconds)
     
     override def preStart() = {
         Logger info s"RegistrarActor $self.path is starting up"
@@ -21,10 +26,11 @@ class RegistrarActor extends Actor {
         case OpenSocket(ref: ActorRef) =>
             Logger debug s"Received an OpenSocket: $ref.path"
             val socket = context actorOf Props(new SocketActor(ref))
+            context watch socket // TODO Remove from users table when the actor dies
             sender ! socket
-        case JoinRoom(roomId: BigInt) =>
-            Logger debug s"Received a JoinRoom: $roomId"
-            user forward JoinRoom(roomId)
+        case JoinRoom(roomId: BigInt, actorPath: String) =>
+            Logger debug s"Received a JoinRoom: $roomId, $actorPath"
+            user forward JoinRoom(roomId, actorPath)
         case LeaveRoom(userId: BigInt, roomId: BigInt) =>
             Logger debug s"Received a LeaveRoom: $userId, $roomId"
             user forward LeaveRoom(userId, roomId)
@@ -56,6 +62,13 @@ class RegistrarActor extends Actor {
             Logger debug s"Received a DeleteRoom: $roomId"
             room forward DeleteRoom(roomId)
         case Message(userId: BigInt, userName: String, roomId: BigInt, messageText: String) =>
-            // TODO Forward message to all users in registry
+            Logger debug s"Received a message: $userId, $userName, $roomId, $messageText"
+            user ? GetUsers(roomId) onSuccess {
+                case Some(users: List[User]) => users foreach { user: User =>
+                    context.actorSelection(user.actorPath).resolveOne map { ref: ActorRef =>
+                        ref ! Message(userId, userName, roomId, messageText)
+                    }
+                }
+            }
     }
 }

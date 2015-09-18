@@ -54,7 +54,7 @@ class RoomActor() extends Actor {
     }
     
     def deleteRoom(roomId: BigInt): Integer = {
-        Logger debug (s"Deleting room: $roomId")
+        Logger debug s"Deleting room: $roomId"
         DB.withConnection { implicit c =>
             return SQL"delete from rooms where id = '$roomId'"
                     .executeUpdate()

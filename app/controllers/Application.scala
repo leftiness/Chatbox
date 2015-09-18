@@ -18,7 +18,7 @@ class Application extends Controller {
     val system = ActorSystem("system")
     val registrar = system actorOf Props[RegistrarActor]
     
-    implicit val timeout = Timeout(5 seconds)
+    implicit val timeout = Timeout(5.seconds)
     
     Logger info "Application is starting up"
     

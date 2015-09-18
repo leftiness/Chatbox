@@ -6,7 +6,7 @@ import akka.actor._
 
 case class OpenSocket(ref: ActorRef)
 
-case class JoinRoom(userId: BigInt)
+case class JoinRoom(userId: BigInt, actorPath: String)
 case class LeaveRoom(userId: BigInt, roomId: BigInt)
 case class GetUser(userId: BigInt)
 case class GetUsers(roomId: BigInt)

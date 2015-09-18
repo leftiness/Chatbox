@@ -115,11 +115,11 @@ class UserActor() extends Actor {
     }
     
     def receive = {
-        case JoinRoom(roomId: BigInt) =>
+        case JoinRoom(roomId: BigInt, actorPath: String) =>
             Logger debug s"Received a JoinRoom: $roomId"
             registrar ? GetRoom(roomId) onSuccess {
                 case Some(room: Room) =>
-                    sender ! joinRoom(roomId, sender.path.toSerializationFormat)
+                    sender ! joinRoom(roomId, actorPath)
             }
         case LeaveRoom(userId: BigInt, roomId: BigInt) =>
             Logger debug s"Received a LeaveRoom: $userId, $roomId"
