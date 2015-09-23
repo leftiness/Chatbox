@@ -9,7 +9,7 @@ create table rooms (
 );
 
 create table users (
-    actorPath varchar2 not null,
+    actorName varchar2 not null,
     roomId bigint not null,
     userName varchar2 not null default sysdate,
     joinDate timestamp not null default sysdate,

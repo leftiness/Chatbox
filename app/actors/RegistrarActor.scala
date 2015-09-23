@@ -57,8 +57,9 @@ class RegistrarActor extends Actor {
                 case Some(sentBy: User) => user ? GetUsers(roomId) onSuccess {
                     case Some(users: List[User]) => users foreach { sendTo: User =>
                         // TODO Apparently this List[User] is erased by type erasure... I'm not really sure what to do about that...
-                        context.actorSelection(sendTo.actorPath).resolveOne map { ref: ActorRef =>
-                            ref ! MessageOut(sentBy.userName, roomId, messageText)
+                        context.child(sendTo.actorName) match {
+                            case Some(ref: ActorRef) => ref ! MessageOut(sentBy.userName, roomId, messageText)
+                            case None => // TODO There is no child with that actorName?
                         }
                     }
                 }
