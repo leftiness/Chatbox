@@ -6,15 +6,15 @@ import play.api.Logger
 
 import messages._
 
-class SocketActor(out: ActorRef) extends Actor {
-    val registrar = context.parent
-    
+class SocketActor(out: ActorRef, registrar: ActorRef) extends Actor {
+
     override def preStart() = {
         Logger info s"SocketActor $self is starting up"
     }
     
     override def postStop() = {
         Logger info s"SocketActor $self is shutting down"
+        registrar ! Terminated(self)
     }
     
     def receive = {

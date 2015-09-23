@@ -26,9 +26,13 @@ class RegistrarActor extends Actor {
     def receive = {
         case OpenSocket(ref: ActorRef) =>
             Logger debug s"Received an OpenSocket: $ref"
-            val socket = context actorOf Props(new SocketActor(ref))
-            context watch socket
-            sender ! socket
+            val props = Props(new SocketActor(ref, self))
+            sender ! props
+            // TODO I switched the db to store actor names instead of paths because context.child is nicer.
+            // ... but I think I'll have to switch it back. The websocket answer on the controller takes this
+            // props that I send back and creates a new actor in a new context. It isn't a child of the registrar.
+            // Therefore, the registrar needs to be passed in as a parameter at creation, and the registrar will
+            // have to look up the socket actors by path instead of by name. Sigh.
         case JoinRoom(roomId: String) =>
             Logger debug s"Received a JoinRoom: $roomId"
             user forward JoinRoom(roomId)
@@ -51,7 +55,7 @@ class RegistrarActor extends Actor {
             Logger debug s"Received a NameRoom: $roomId, $roomName"
             room forward NameRoom(roomId, roomName)
         case MessageIn(roomId: String, messageText: String) =>
-            Logger debug s"Received a message: $roomId, $messageText"
+            Logger debug s"Received a MessageIn: $roomId, $messageText"
             val path = sender().path.toSerializationFormat
             user ? GetUser(path, roomId) onSuccess {
                 case Some(sentBy: User) => user ? GetUsers(roomId) onSuccess {
