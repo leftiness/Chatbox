@@ -19,11 +19,11 @@ class UserActor() extends Actor {
     implicit val timeout = Timeout(5.seconds)
     
     override def preStart() = {
-        Logger info s"UserActor $self.path is starting up"
+        Logger info s"UserActor $self is starting up"
     }
     
     override def postStop() = {
-        Logger info s"UserActor $self.path is shutting down"
+        Logger info s"UserActor $self is shutting down"
     }
     
     object User {

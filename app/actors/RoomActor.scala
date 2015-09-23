@@ -13,11 +13,11 @@ class RoomActor() extends Actor {
     val registrar = context.parent
     
     override def preStart() = {
-        Logger info s"RoomActor $self.path is starting up"
+        Logger info s"RoomActor $self is starting up"
     }
     
     override def postStop() = {
-        Logger info s"RoomActor $self.path is shutting down"
+        Logger info s"RoomActor $self is shutting down"
     }
     
     object Room {

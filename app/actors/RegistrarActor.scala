@@ -16,16 +16,16 @@ class RegistrarActor extends Actor {
     implicit val timeout = Timeout(5.seconds)
     
     override def preStart() = {
-        Logger info s"RegistrarActor $self.path is starting up"
+        Logger info s"RegistrarActor $self is starting up"
     }
     
     override def postStop() = {
-        Logger info s"RegistrarActor $self.path is shutting down"
+        Logger info s"RegistrarActor $self is shutting down"
     }
 
     def receive = {
         case OpenSocket(ref: ActorRef) =>
-            Logger debug s"Received an OpenSocket: $ref.path"
+            Logger debug s"Received an OpenSocket: $ref"
             val socket = context actorOf Props(new SocketActor(ref))
             context watch socket
             sender ! socket
@@ -69,7 +69,7 @@ class RegistrarActor extends Actor {
         case GlobalSystemMessage(messageText: String) =>
             // TODO send message to all users in registry
         case Terminated(ref: ActorRef) =>
-            Logger debug s"Received a Terminated"
+            Logger debug s"Received a Terminated: $ref"
             user ! DisconnectUser(ref.path.toSerializationFormat)
     }
 }

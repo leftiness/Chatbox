@@ -21,8 +21,6 @@ class Application extends Controller {
     implicit val timeout = Timeout(5.seconds)
     
     Logger info "Application is starting up"
-    
-    // TODO There should be a failure strategy in place where another registrar gets started up if the current one fails.
 
     def index = Action {
         Logger debug "Received request for /"

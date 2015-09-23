@@ -10,11 +10,11 @@ class SocketActor(out: ActorRef) extends Actor {
     val registrar = context.parent
     
     override def preStart() = {
-        Logger info s"SocketActor $self.path is starting up"
+        Logger info s"SocketActor $self is starting up"
     }
     
     override def postStop() = {
-        Logger info s"SocketActor $self.path is shutting down"
+        Logger info s"SocketActor $self is shutting down"
     }
     
     def receive = {
