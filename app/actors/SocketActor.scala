@@ -21,22 +21,24 @@ class SocketActor(out: ActorRef) extends Actor {
         case msg: JsValue =>
             Logger debug s"Received a JSON: $msg"
             try {
-                (msg \ "type").get.as[String] match {
-                    case "join" =>
+                (msg \ "messageType").get.as[String] match {
+                    case "joinRoom" =>
                         Logger debug "JSON is a join"
                         val roomId = (msg \ "roomId").get.as[String]
                         registrar ! JoinRoom(roomId)
-                    case "leave" =>
+                    case "leaveRoom" =>
                         Logger debug "JSON is a leave"
                         val roomId = (msg \ "roomId").get.as[String]
                         registrar ! LeaveRoom(roomId)
-                            // TODO Case failure?
-                    case "name" =>
+                    case "disconnectUser" =>
+                        Logger debug "Json is a leave"
+                        registrar ! DisconnectUser(self.path.name)
+                    case "nameUser" =>
                         Logger debug "JSON is a name"
                         val userName = (msg \ "userName").get.as[String]
                         val roomId = (msg \ "roomId").get.as[String]
                         registrar ! NameUser(userName, roomId)
-                    case "message" =>
+                    case "messageIn" =>
                         Logger debug s"JSON is a message"
                         val roomId = (msg \ "roomId").get.as[String]
                         val messageText = (msg \ "messageText").get.as[String]
@@ -53,7 +55,8 @@ class SocketActor(out: ActorRef) extends Actor {
             val json : JsValue = JsObject(Seq(
                 "userName" -> JsString(userName),
                 "roomId" -> JsString(roomId),
-                "messageText" -> JsString(messageText)
+                "messageText" -> JsString(messageText),
+                "messageType" -> JsString("messageOut")
             ))
             out ! json
     }

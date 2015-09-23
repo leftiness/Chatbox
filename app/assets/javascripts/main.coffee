@@ -8,7 +8,7 @@ debug = (message) ->
         console.log message
 
 _vm =
-    room: ko.observable('The Room')
+    room: ko.observable('12345')
     name: ko.observable('Anonymous12345')
     messages: ko.observableArray()
     message: ko.observable()
@@ -19,39 +19,33 @@ _vm =
         else
             true
     submit: ->
-        message = (this.message() || '').trim()
-        if message.length > 0
-            request = switch message.split(' ')[0]
+        text = (this.message() || '').trim()
+        if text.length > 0
+            request = switch text.split(' ')[0]
                 when '/join'
-                    room: message.slice(6)
-                    type: 'join'
+                    roomId: text.slice(6)
+                    messageType: 'joinRoom'
                 when '/leave'
-                    name: this.name()
-                    room: message.slice(7)
-                    type: 'leave'
+                    room: text.slice(7)
+                    messageType: 'leaveRoom'
                 when '/disconnect'
-                    name: this.name()
-                    type: 'disconnect'
+                    messageType: 'disconnectUser'
                 when '/name'
-                    name: this.name()
-                    room: this.room()
-                    change: message.slice(6)
-                    type: 'name'
+                    userName: message.slice(6)
+                    roomId: this.room()
+                    messageType: 'name'
                 else
-                    name: this.name()
-                    room: this.room()
-                    message: message
-                    type: 'message'
+                    roomId: this.room()
+                    messageText: text
+                    messageType: 'messageIn'
             debug "Sending request #{JSON.stringify request}"
             _ws.send JSON.stringify request
             this.message ''
     receive: (response) ->
-        debug "Received a message #{JSON.stringify response}"
+        debug "Received data #{JSON.stringify response}"
         switch response.type
-            when 'message'
+            when 'messageOut'
                 this.messages.push response
-            when 'name'
-                this.name response.change
     
 init_ws = ->
     def = Q.defer()
