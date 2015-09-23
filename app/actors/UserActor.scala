@@ -28,41 +28,41 @@ class UserActor() extends Actor {
     
     object User {
         val parser: RowParser[User] = {
-            str("users.path") ~
-            str("users.room") ~
-            str("users.name") ~
-            date("users.joined") ~
-            bool("users.admin") ~
-            bool("users.banned") map {
-                case path ~ room ~ name ~ joined ~ admin ~ banned =>
-                    messages.User(path, room, name, joined, admin, banned)
+            str("users.actorPath") ~
+            str("users.roomId") ~
+            str("users.userName") ~
+            date("users.joinDate") ~
+            bool("users.isAdmin") ~
+            bool("users.isBanned") map {
+                case actorPath ~ roomId ~ userName ~ joinDate ~ isAdmin ~ isBanned =>
+                    messages.User(actorPath, roomId, userName, joinDate, isAdmin, isBanned)
             }
         }
     }
     
-    def joinRoom(path: String, roomId: String): Option[String] = {
+    def joinRoom(actorPath: String, roomId: String): Option[String] = {
         Logger debug s"Joining room: $roomId"
         DB.withConnection { implicit c =>
-            return SQL"insert into users (path, room) values ('$path', '$roomId')"
-                .executeInsert(str("users.path").singleOpt)
+            return SQL"insert into users (actorPath, roomId) values ('$actorPath', '$roomId')"
+                .executeInsert(str("users.actorPath").singleOpt)
         }
     }
     
-    def leaveRoom(path: String, roomId: String): Integer = {
-        Logger debug s"Leaving room: $path, $roomId"
+    def leaveRoom(actorPath: String, roomId: String): Integer = {
+        Logger debug s"Leaving room: $actorPath, $roomId"
         DB.withConnection { implicit c =>
-            return SQL"delete from users where path = '$path' and room = '$roomId'"
+            return SQL"delete from users where actorPath = '$actorPath' and roomId = '$roomId'"
                 .executeUpdate()
         }
     }
 
-    def getUserByPath(path: String, roomId: String): Option[User] = {
-        Logger debug s"Getting user: $path, $roomId"
+    def getUserByPath(actorPath: String, roomId: String): Option[User] = {
+        Logger debug s"Getting user: $actorPath, $roomId"
         DB.withConnection { implicit c =>
-            return SQL"""select (path, room, name, joined, admin, banned)
+            return SQL"""select (actorPath, roomId, userName, joinDate, isAdmin, isBanned)
                 from users
-                where path = '$path'
-                and room = '$roomId'
+                where actorPath = '$actorPath'
+                and roomId = '$roomId'
                 """
                 .as(User.parser.singleOpt)
         }
@@ -71,9 +71,9 @@ class UserActor() extends Actor {
     def getUserByName(userName: String, roomId: String): Option[User] = {
         Logger debug s"Getting user: $userName, $roomId"
         DB withConnection { implicit c =>
-            return SQL"""select (path, room, name, joined, admin, banned)
+            return SQL"""select (actorPath, roomId, userName, joinDate, isAdmin, isBanned)
                 from users
-                where name = '$userName' and room = '$roomId'
+                where userName = '$userName' and roomId = '$roomId'
                 """
                 .as(User.parser.singleOpt)
         }
@@ -82,9 +82,9 @@ class UserActor() extends Actor {
     def getUsers(roomId: String): List[User] = {
         Logger debug s"Getting users in room: $roomId"
         DB.withConnection { implicit c =>
-            return SQL"""select (path, room, name, joined, admin, banned)
+            return SQL"""select (actorPath, roomId, userName, joinDate, isAdmin, isBanned)
                 from users
-                where room = '$roomId'
+                where roomId = '$roomId'
                 """
                 .as(User.parser.*)
         }
@@ -93,19 +93,19 @@ class UserActor() extends Actor {
     def getUsersByPath(actorPath: String): List[User] = {
         Logger debug s"Getting users with path: $actorPath"
         DB.withConnection { implicit c =>
-            return SQL"""select (path, room, name, joined, admin, banned)
+            return SQL"""select (actorPath, roomId, userName, joinDate, isAdmin, isBanned)
                 from users
-                where path = '$actorPath'
+                where actorPath = '$actorPath'
                 """
                 .as(User.parser.*)
         }
     }
     
-    def nameUser(path: String, userName: String, roomId: String): Integer = {
-        Logger debug s"Renaming user: $path, $userName, $roomId"
+    def nameUser(actorPath: String, userName: String, roomId: String): Integer = {
+        Logger debug s"Renaming user: $actorPath, $userName, $roomId"
         DB.withConnection { implicit c =>
-            return SQL"""update users set name = '$userName'
-                where path = '$path' and room = '$roomId'
+            return SQL"""update users set userName = '$userName'
+                where actorPath = '$actorPath' and roomId = '$roomId'
                 """
                 .executeUpdate()
         }
@@ -114,9 +114,9 @@ class UserActor() extends Actor {
     def promoteUser(userName: String, roomId: String): Integer = {
         Logger debug s"Promoting user: $userName, $roomId"
         DB.withConnection { implicit c =>
-            return SQL"""update users set admin = true
-                where name = '$userName'"
-                and room = '$roomId'
+            return SQL"""update users set isAdmin = true
+                where userName = '$userName'"
+                and roomId = '$roomId'
                 """
                 .executeUpdate()
         }
@@ -125,9 +125,9 @@ class UserActor() extends Actor {
     def banUser(userName: String, roomId: String): Integer = {
         Logger debug s"Banning user: $userName, $roomId"
         DB.withConnection { implicit c =>
-            return SQL"""update users set banned = true
-                where username = '$userName'
-                and room = '$roomId'
+            return SQL"""update users set isBanned = true
+                where userName = '$userName'
+                and roomId = '$roomId'
                 """
                 .executeUpdate()
         }

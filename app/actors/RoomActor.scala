@@ -22,9 +22,9 @@ class RoomActor() extends Actor {
     
     object Room {
         val parser: RowParser[Room] = {
-            str("rooms.id") ~
-            str("rooms.name") map {
-                case id ~ name => messages.Room(id, name)
+            str("rooms.roomId") ~
+            str("rooms.roomName") map {
+                case roomId ~ roomName => messages.Room(roomId, roomName)
             }
         }
     }
@@ -33,15 +33,15 @@ class RoomActor() extends Actor {
         // TODO Use a string hash instead of an incrementing bigint for room ids
         Logger debug s"Creating new room: $roomName"
         DB.withConnection { implicit c =>
-            return SQL"insert into rooms (name) values ($roomName)"
-                .executeInsert(long("rooms.id").singleOpt)
+            return SQL"insert into rooms (roomName) values ($roomName)"
+                .executeInsert(long("rooms.roomId").singleOpt)
         }
     }
     
     def getRoom(roomId: String): Option[Room] = {
         Logger debug s"Retrieving room: $roomId"
         DB.withConnection { implicit c =>
-            return SQL"select (id) from rooms where id = '$roomId'"
+            return SQL"select (roomId) from rooms where roomId = '$roomId'"
                 .as(Room.parser.singleOpt)
         }
     }
@@ -49,7 +49,7 @@ class RoomActor() extends Actor {
     def nameRoom(roomId: String, roomName: String): Integer = {
         Logger debug s"Renaming room: $roomId, $roomName"
         DB.withConnection { implicit c =>
-            return SQL"update rooms set name = '$roomName' where id = '$roomId'"
+            return SQL"update rooms set roomName = '$roomName' where roomId = '$roomId'"
                 .executeUpdate()
         }
     }
@@ -57,7 +57,7 @@ class RoomActor() extends Actor {
     def deleteRoom(roomId: String): Integer = {
         Logger debug s"Deleting room: $roomId"
         DB.withConnection { implicit c =>
-            return SQL"delete from rooms where id = '$roomId'"
+            return SQL"delete from rooms where roomId = '$roomId'"
                     .executeUpdate()
         }
     }

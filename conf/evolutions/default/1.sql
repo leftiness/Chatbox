@@ -3,20 +3,20 @@
 # --- !ups
 
 create table rooms (
-    id bigint not null auto_increment,
-    name varchar2 not null default id,
-    primary key (id)
+    roomId bigint not null auto_increment,
+    roomName varchar2 not null default roomId,
+    primary key (roomId)
 );
 
 create table users (
-    path varchar2 not null,
-    room bigint not null,
-    name varchar2 not null default sysdate,
-    joined timestamp not null default sysdate,
-    admin boolean not null default false,
-    banned boolean not null default false,
-    primary key (path, room)
-    foreign key (room) references (rooms.id)
+    actorPath varchar2 not null,
+    roomId bigint not null,
+    userName varchar2 not null default sysdate,
+    joinDate timestamp not null default sysdate,
+    isAdmin boolean not null default false,
+    isBanned boolean not null default false,
+    primary key (actorPath, roomId)
+    foreign key (roomId) references (rooms.roomId)
 );  
  
 # --- !Downs
