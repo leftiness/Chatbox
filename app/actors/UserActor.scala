@@ -25,116 +25,142 @@ class UserActor() extends Actor {
     override def postStop() = {
         Logger info s"UserActor $self is shutting down"
     }
-    
+
     object User {
         val parser: RowParser[User] = {
-            str("users.userId") ~
-            str("users.actorName") ~
-            str("users.actorPath") ~
-            str("users.roomId") ~
-            str("users.userName") ~
-            date("users.joinDate") ~
-            bool("users.isAdmin") map {
+            str("USERS.USER_ID") ~
+              str("USERS.ACTOR_NAME") ~
+              str("USERS.ACTOR_PATH") ~
+              str("USERS.ROOM_ID") ~
+              str("USERS.USER_NAME") ~
+              date("USERS.JOIN_DATE") ~
+              bool("USERS.IS_ADMIN") map {
                 case userId ~ actorName ~ actorPath ~ roomId ~ userName ~ joinDate ~ isAdmin =>
                     messages.User(userId, actorName, actorPath, roomId, userName, joinDate, isAdmin)
             }
         }
     }
-    
-    def joinRoom(actorName: String, actorPath: String, roomId: String): Option[String] = {
+
+    def joinRoom(actorName: String, actorPath: String, roomId: String, userName: String): Option[String] = {
         Logger debug s"Joining room: $roomId"
         DB.withConnection { implicit c =>
-            return SQL"insert into users (actorName, actorPath, roomId) values ('$actorName', '$actorPath', '$roomId')"
-                .executeInsert(str("users.userId").singleOpt)
+            return SQL"""INSERT INTO USERS (ACTOR_NAME, ACTOR_PATH, ROOM_ID, USER_NAME)
+                VALUES ($actorName, $actorPath, $roomId, $userName)
+                """
+              .executeInsert(str("USERS.USER_ID").singleOpt)
         }
     }
-    
+
     def leaveRoom(actorName: String, roomId: String): Int = {
         Logger debug s"Leaving room: $actorName, $roomId"
         DB.withConnection { implicit c =>
-            return SQL"delete from users where actorName = '$actorName' and roomId = '$roomId'"
-                .executeUpdate()
+            return SQL"DELETE FROM USERS WHERE ACTOR_NAME = $actorName AND ROOM_ID = $roomId"
+              .executeUpdate()
         }
     }
 
     def getUserByActorName(actorName: String, roomId: String): Option[User] = {
         Logger debug s"Getting user: $actorName, $roomId"
         DB.withConnection { implicit c =>
-            return SQL"""select (userId, actorName, actorPath, roomId, userName, joinDate, isAdmin)
-                from users
-                where actorName = '$actorName'
-                and roomId = '$roomId'
+            return SQL"""SELECT (USER_ID, ACTOR_NAME, ACTOR_PATH, ROOM_ID, USER_NAME, JOIN_DATE, IS_ADMIN)
+                FROM USERS
+                WHERE ACTOR_NAME = $actorName
+                AND ROOM_ID = $roomId
                 """
-                .as(User.parser.singleOpt)
+              .as(User.parser.singleOpt)
         }
     }
-    
+
     def getUserByUserName(userName: String, roomId: String): Option[User] = {
         Logger debug s"Getting user: $userName, $roomId"
         DB withConnection { implicit c =>
-            return SQL"""select (userId, actorName, actorPath, roomId, userName, joinDate, isAdmin)
-                from users
-                where userName = '$userName' and roomId = '$roomId'
+            return SQL"""SELECT (USER_ID, ACTOR_NAME, ACTOR_PATH, ROOM_ID, USER_NAME, JOIN_DATE, IS_ADMIN)
+                FROM USERS
+                WHERE USER_NAME = $userName AND ROOM_ID = $roomId
                 """
-                .as(User.parser.singleOpt)
+              .as(User.parser.singleOpt)
         }
     }
-    
+
     def getUsersByRoomId(roomId: String): List[User] = {
         Logger debug s"Getting users in room: $roomId"
         DB.withConnection { implicit c =>
-            return SQL"""select (userId, actorName, actorPath, roomId, userName, joinDate, isAdmin)
-                from users
-                where roomId = '$roomId'
+            return SQL"""SELECT (USER_ID, ACTOR_NAME, ACTOR_PATH, ROOM_ID, USER_NAME, JOIN_DATE, IS_ADMIN)
+                FROM USERS
+                WHERE ROOM_ID = $roomId
                 """
-                .as(User.parser.*)
+              .as(User.parser.*)
         }
     }
 
     def getUsersByActorName(actorName: String): List[User] = {
         Logger debug s"Getting users with path: $actorName"
         DB.withConnection { implicit c =>
-            return SQL"""select (userId, actorName, actorPath, roomId, userName, joinDate, isAdmin)
-                from users
-                where actorName = '$actorName'
+            return SQL"""SELECT (USER_ID, ACTOR_NAME, ACTOR_PATH, ROOM_ID, USER_NAME, JOIN_DATE, IS_ADMIN)
+                FROM USERS
+                WHERE ACTOR_NAME = $actorName
                 """
-                .as(User.parser.*)
+              .as(User.parser.*)
         }
     }
-    
+
     def nameUser(actorName: String, userName: String, roomId: String): Int = {
         Logger debug s"Renaming user: $actorName, $userName, $roomId"
         DB.withConnection { implicit c =>
-            return SQL"""update users set userName = '$userName'
-                where actorName = '$actorName' and roomId = '$roomId'
-                """
-                .executeUpdate()
-        }
-    }
-    
-    def promoteUser(userName: String, roomId: String): Int = {
-        Logger debug s"Promoting user: $userName, $roomId"
-        DB.withConnection { implicit c =>
-            return SQL"""update users set isAdmin = true
-                where userName = '$userName'"
-                and roomId = '$roomId'
+            return SQL"""UPDATE USERS SET USER_NAME = $userName
+                WHERE ACTOR_NAME = $actorName AND ROOM_ID = $roomId
                 """
               .executeUpdate()
         }
     }
+
+    def promoteUser(userName: String, roomId: String): Int = {
+        Logger debug s"Promoting user: $userName, $roomId"
+        DB.withConnection { implicit c =>
+            return SQL"""UPDATE USERS SET IS_ADMIN = TRUE
+                WHERE USER_NAME = $userName"
+                AND ROOM_ID = $roomId
+                """
+              .executeUpdate()
+        }
+    }
+
+    def findValidUserName(userName: String, roomId: String): String = {
+        Logger debug s"Trying to find a valid userName starting with $userName"
+        for (i <- 1 to 10) {
+            val attempt = i match {
+                case 1 => userName
+                case _ => userName + (System.currentTimeMillis / 1000).toString
+            }
+            getUserByUserName(attempt, roomId) match {
+                case Some(user: User) =>
+                case None => return attempt
+            }
+        }
+        userName
+        // TODO At the point where I return the original userName, I know that it will fail.
+        // So I'll just tell the user "Failed to join room with userName: $userName."
+        // He can try again to see if it was just a fluke, or maybe there was a real problem somewhere?
+        // Is there a better way for me to handle the case where I can't find a valid userName?
+    }
+
+    // TODO Users and Rooms tables have limits on columns now. Before doing anything, check if the value
+    // is too long. If it is, trim it before doing the thing.
     
     def receive = {
-        case JoinRoom(roomId: String) =>
+        case JoinRoom(roomId: String, userName: String) =>
             Logger debug s"Received a JoinRoom: $roomId"
             val actorName = sender().path.name
             val actorPath = sender().path.toSerializationFormat
             registrar ? GetRoom(roomId) onSuccess {
                 case Some(room: Room) =>
-                    joinRoom(actorName, actorPath, roomId) match {
-                        case Some(userName: String) =>
-                            registrar ! SystemMessage(roomId, s"User $userName has joined the room")
-                            sender ! NameUser(userName, roomId)
-                        case None => sender ! GlobalSystemMessage(s"Failed to join room: $roomId")
+                    val validName = findValidUserName(userName, roomId)
+                    joinRoom(actorName, actorPath, roomId, validName) match {
+                        case Some(userId: String) =>
+                            registrar ! SystemMessage(roomId, s"User $validName has joined the room")
+                            sender ! NameUser(validName, roomId)
+                        case None =>
+                            sender ! GlobalSystemMessage(s"Failed to join room $roomId with name $validName")
                     }
                 case None => sender ! GlobalSystemMessage(s"Failed to join room: $roomId")
             }

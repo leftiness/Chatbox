@@ -21,19 +21,21 @@ _vm =
     submit: ->
         text = (this.message() || '').trim()
         if text.length > 0
-            request = switch text.split(' ')[0]
+            arr = text.split(' ')
+            request = switch arr[0]
                 when '/join'
-                    roomId: text.slice(6)
+                    roomId: arr[1]
+                    userName: arr[2]
                     messageType: 'joinRoom'
                 when '/leave'
-                    room: text.slice(7)
+                    roomId: arr[1]
                     messageType: 'leaveRoom'
                 when '/disconnect'
                     messageType: 'disconnectUser'
                 when '/name'
-                    userName: message.slice(6)
+                    userName: arr[1]
                     roomId: this.room()
-                    messageType: 'name'
+                    messageType: 'nameUser'
                 else
                     roomId: this.room()
                     messageText: text

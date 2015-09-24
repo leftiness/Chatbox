@@ -28,9 +28,9 @@ class RegistrarActor extends Actor {
             Logger debug s"Received an OpenSocket: $ref"
             val props = Props(new SocketActor(ref, self))
             sender ! props
-        case JoinRoom(roomId: String) =>
+        case JoinRoom(roomId: String, userName: String) =>
             Logger debug s"Received a JoinRoom: $roomId"
-            user forward JoinRoom(roomId)
+            user forward JoinRoom(roomId, userName)
         case LeaveRoom(roomId: String) =>
             Logger debug s"Received a LeaveRoom: $roomId"
             user forward LeaveRoom(roomId)
@@ -48,8 +48,8 @@ class RegistrarActor extends Actor {
             room forward NameRoom(roomId, roomName)
         case MessageIn(roomId: String, messageText: String) =>
             Logger debug s"Received a MessageIn: $roomId, $messageText"
-            val path = sender().path.toSerializationFormat
-            user ? GetUser(path, roomId) onSuccess {
+            val actorName = sender().path.name
+            user ? GetUser(actorName, roomId) onSuccess {
                 case Some(sentBy: User) => user ? GetUsers(roomId) onSuccess {
                     case Some(users: List[User]) => users foreach { sendTo: User =>
                         // TODO Apparently this List[User] is erased by type erasure... I'm not really sure what to do about that...
@@ -59,6 +59,7 @@ class RegistrarActor extends Actor {
                         }
                     }
                 }
+                case None => sender ! GlobalSystemMessage(s"You aren't in the room: $roomId")
             }
         case SystemMessage(roomId: String, messageText: String) =>
             // TODO get users in the room and send them a message

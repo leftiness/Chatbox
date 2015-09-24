@@ -7,7 +7,7 @@ import akka.actor._
 case class OpenSocket(ref: ActorRef)
 case class CloseSocket(ref: ActorRef)
 
-case class JoinRoom(roomId: String)
+case class JoinRoom(roomId: String, userName: String)
 case class LeaveRoom(roomId: String)
 case class GetUser(actorName: String, roomId: String)
 case class GetUsers(roomId: String)

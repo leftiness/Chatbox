@@ -22,8 +22,8 @@ class RoomActor() extends Actor {
     
     object Room {
         val parser: RowParser[Room] = {
-            str("rooms.roomId") ~
-            str("rooms.roomName") map {
+            str("ROOMS.ROOM_ID") ~
+            str("ROOMS.ROOM_NAME") map {
                 case roomId ~ roomName => messages.Room(roomId, roomName)
             }
         }
@@ -33,15 +33,15 @@ class RoomActor() extends Actor {
         // TODO Use a string hash instead of an incrementing bigint for room ids
         Logger debug s"Creating new room: $roomName"
         DB.withConnection { implicit c =>
-            return SQL"insert into rooms (roomName) values ($roomName)"
-                .executeInsert(long("rooms.roomId").singleOpt)
+            return SQL"INSERT INTO ROOMS (ROOM_NAME) values ($roomName)"
+                .executeInsert(long("ROOMS.ROOM_ID").singleOpt)
         }
     }
     
     def getRoom(roomId: String): Option[Room] = {
         Logger debug s"Retrieving room: $roomId"
         DB.withConnection { implicit c =>
-            return SQL"select (roomId) from rooms where roomId = '$roomId'"
+            return SQL"SELECT (ROOM_ID) FROM ROOMS WHERE ROOM_ID = $roomId"
                 .as(Room.parser.singleOpt)
         }
     }
@@ -49,7 +49,7 @@ class RoomActor() extends Actor {
     def nameRoom(roomId: String, roomName: String): Integer = {
         Logger debug s"Renaming room: $roomId, $roomName"
         DB.withConnection { implicit c =>
-            return SQL"update rooms set roomName = '$roomName' where roomId = '$roomId'"
+            return SQL"UPDATE ROOMS SET ROOM_NAME = $roomName WHERE ROOM_ID = $roomId"
                 .executeUpdate()
         }
     }
@@ -57,7 +57,7 @@ class RoomActor() extends Actor {
     def deleteRoom(roomId: String): Integer = {
         Logger debug s"Deleting room: $roomId"
         DB.withConnection { implicit c =>
-            return SQL"delete from rooms where roomId = '$roomId'"
+            return SQL"DELETE FROM ROOMS WHERE ROOM_ID = $roomId"
                     .executeUpdate()
         }
     }

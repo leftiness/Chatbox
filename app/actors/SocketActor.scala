@@ -25,7 +25,8 @@ class SocketActor(out: ActorRef, registrar: ActorRef) extends Actor {
                     case "joinRoom" =>
                         Logger debug "JSON is a join"
                         val roomId = (msg \ "roomId").get.as[String]
-                        registrar ! JoinRoom(roomId)
+                        val userName = (msg \ "userName").get.as[String]
+                        registrar ! JoinRoom(roomId, userName)
                     case "leaveRoom" =>
                         Logger debug "JSON is a leave"
                         val roomId = (msg \ "roomId").get.as[String]
@@ -60,6 +61,13 @@ class SocketActor(out: ActorRef, registrar: ActorRef) extends Actor {
             ))
             out ! json
         case NameUser(userName: String, roomId: String) =>
+            Logger debug s"Received a NameUser: $userName, $roomId"
             // TODO Tell the user that he has a new username
+        case SystemMessage(roomId: String, messageText: String) =>
+            Logger debug s"Received a SystemMessage: $roomId, $messageText"
+            // TODO
+        case GlobalSystemMessage(messageText: String) =>
+            Logger debug s"Received a GlobalSystemMessage: $messageText"
+            // TODO
     }
 }

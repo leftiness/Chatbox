@@ -1,26 +1,24 @@
-# --- rooms and users
- 
-# --- !ups
+# --- !Ups
 
-create table rooms (
-    roomId bigint not null auto_increment,
-    roomName varchar2 not null default roomId,
-    primary key (roomId)
+CREATE TABLE ROOMS (
+    ROOM_ID BIGINT(20) NOT NULL AUTO_INCREMENT,
+    ROOM_NAME VARCHAR2(255) NOT NULL,
+    PRIMARY KEY (ROOM_ID)
 );
 
-create table users (
-    userId bigint not null auto_increment,
-    actorName varchar2 not null,
-    actorPath varchar2 not null,
-    roomId bigint not null,
-    userName varchar2 not null default userId,
-    joinDate timestamp not null default sysdate,
-    isAdmin boolean not null default false,
-    primary key (userId),
-    foreign key (roomId) references (rooms.roomId)
-);  
- 
+CREATE TABLE USERS (
+    USER_ID BIGINT(20) NOT NULL AUTO_INCREMENT,
+    ACTOR_NAME VARCHAR2(255) NOT NULL,
+    ACTOR_PATH VARCHAR2(255) NOT NULL,
+    ROOM_ID BIGINT(20) NOT NULL,
+    USER_NAME VARCHAR2(255) NOT NULL,
+    JOIN_DATE TIMESTAMP NOT NULL DEFAULT SYSDATE,
+    IS_ADMIN BOOLEAN NOT NULL DEFAULT FALSE,
+    PRIMARY KEY (USER_ID),
+    FOREIGN KEY (ROOM_ID) REFERENCES ROOMS(ROOM_ID)
+);
+
 # --- !Downs
 
-drop table rooms;
-drop table users;
+DROP TABLE ROOMS;
+DROP TABLE USERS;
