@@ -47,7 +47,7 @@ class UserActor() extends Actor {
             return SQL"""INSERT INTO USERS (ACTOR_NAME, ACTOR_PATH, ROOM_ID, USER_NAME)
                 VALUES ($actorName, $actorPath, $roomId, $userName)
                 """
-              .executeInsert(str("USERS.USER_ID").singleOpt)
+                .executeInsert(str("USERS.USER_ID").singleOpt)
         }
     }
 
@@ -55,7 +55,7 @@ class UserActor() extends Actor {
         Logger debug s"Leaving room: $actorName, $roomId"
         DB.withConnection { implicit c =>
             return SQL"DELETE FROM USERS WHERE ACTOR_NAME = $actorName AND ROOM_ID = $roomId"
-              .executeUpdate()
+                .executeUpdate()
         }
     }
 
@@ -67,7 +67,7 @@ class UserActor() extends Actor {
                 WHERE ACTOR_NAME = $actorName
                 AND ROOM_ID = $roomId
                 """
-              .as(User.parser.singleOpt)
+                .as(User.parser.singleOpt)
         }
     }
 
@@ -78,7 +78,7 @@ class UserActor() extends Actor {
                 FROM USERS
                 WHERE USER_NAME = $userName AND ROOM_ID = $roomId
                 """
-              .as(User.parser.singleOpt)
+                .as(User.parser.singleOpt)
         }
     }
 
@@ -89,7 +89,7 @@ class UserActor() extends Actor {
                 FROM USERS
                 WHERE ROOM_ID = $roomId
                 """
-              .as(User.parser.*)
+                .as(User.parser.*)
         }
     }
 
@@ -100,7 +100,17 @@ class UserActor() extends Actor {
                 FROM USERS
                 WHERE ACTOR_NAME = $actorName
                 """
-              .as(User.parser.*)
+                .as(User.parser.*)
+        }
+    }
+
+    def getAllUsers: List[User] = {
+        Logger debug s"Getting all users"
+        DB.withConnection { implicit c =>
+            return SQL"""SELECT (USER_ID, ACTOR_NAME, ACTOR_PATH, ROOM_ID, USER_NAME, JOIN_DATE, IS_ADMIN)
+                FROM USERS
+                """
+                .as(User.parser.*)
         }
     }
 
@@ -110,7 +120,7 @@ class UserActor() extends Actor {
             return SQL"""UPDATE USERS SET USER_NAME = $userName
                 WHERE ACTOR_NAME = $actorName AND ROOM_ID = $roomId
                 """
-              .executeUpdate()
+                .executeUpdate()
         }
     }
 
@@ -121,7 +131,7 @@ class UserActor() extends Actor {
                 WHERE USER_NAME = $userName"
                 AND ROOM_ID = $roomId
                 """
-              .executeUpdate()
+                .executeUpdate()
         }
     }
 
@@ -160,8 +170,7 @@ class UserActor() extends Actor {
                         case Some(userId: String) =>
                             registrar ! SystemMessage(roomId, s"User $validName has joined the room")
                             ref ! NameUser(validName, roomId)
-                        case None =>
-                            ref ! GlobalSystemMessage(s"Failed to join room $roomId with name $validName")
+                        case None => ref ! GlobalSystemMessage(s"Failed to join room $roomId with name $validName")
                     }
                 case None => ref ! GlobalSystemMessage(s"Failed to join room: $roomId")
             }
@@ -183,6 +192,9 @@ class UserActor() extends Actor {
         case GetUsers(roomId: String) =>
             Logger debug s"Received a GetUsers: $roomId"
             sender ! getUsersByRoomId(roomId)
+        case GetAllUsers() =>
+            Logger debug s"Received a GetAllUsers"
+            sender ! getAllUsers
         case NameUser(userName: String, roomId: String) =>
             Logger debug s"Received a NameUser: $userName, $roomId"
             val actorName = sender().path.name

@@ -1,5 +1,6 @@
 #TODO Rooms in the UI
 #TODO knockout for keyup event to send message
+#TODO Receive nameUser, systemMessage, globalSystemMessage, etc...
 
 _debug = true
 

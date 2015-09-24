@@ -40,12 +40,24 @@ class RegistrarActor extends Actor {
         case PromoteUser(userName: String, roomId: String) =>
             Logger debug s"Received a PromoteUser: $userName, $roomId"
             user forward PromoteUser(userName, roomId)
+        case GetUser(actorName: String, roomId: String) =>
+            Logger debug s"Received a GetUser: $actorName, $roomId"
+            user forward GetUser(actorName, roomId)
+        case GetUsers(roomId: String) =>
+            Logger debug s"Received a GetUsers: $roomId"
+            user forward GetUsers(roomId)
+        case GetAllUsers() =>
+            Logger debug s"Received a GetAllUsers"
+            user forward GetAllUsers()
         case NewRoom(roomName: String) =>
             Logger debug s"Received a NewRoom: $roomName"
             room forward NewRoom(roomName)
         case NameRoom(roomId: String, roomName: String) =>
             Logger debug s"Received a NameRoom: $roomId, $roomName"
             room forward NameRoom(roomId, roomName)
+        case GetRoom(roomId: String) =>
+            Logger debug s"Received a GetRoom: $roomId"
+            room forward GetRoom(roomId)
         case MessageIn(roomId: String, messageText: String) =>
             Logger debug s"Received a MessageIn: $roomId, $messageText"
             val actorName = sender().path.name
@@ -63,9 +75,26 @@ class RegistrarActor extends Actor {
                 case None => socket ! GlobalSystemMessage(s"You aren't in the room: $roomId")
             }
         case SystemMessage(roomId: String, messageText: String) =>
-            // TODO get users in the room and send them a message
+            user ? GetUsers(roomId) onSuccess {
+                case Some(users: List[User]) => users foreach { sendTo: User =>
+                    // TODO This List[User] probably is also getting erased...
+                    context.actorSelection(sendTo.actorPath).resolveOne onSuccess {
+                        case ref: ActorRef => ref ! SystemMessage(roomId, messageText)
+                        case _ => // TODO Could not find an actor with that path...
+                    }
+                }
+                case None => // TODO There were no users in the room?
+            }
         case GlobalSystemMessage(messageText: String) =>
-            // TODO send message to all users in registry
+            user ? GetAllUsers() onSuccess {
+                case Some(users: List[User]) => users foreach { sendTo: User =>
+                    context.actorSelection(sendTo.actorPath).resolveOne onSuccess {
+                        case ref: ActorRef => ref ! GlobalSystemMessage(messageText)
+                        case _ => // TODO Could not find an actor with that path...
+                    }
+                }
+                case None => // TODO There were no users at all?
+            }
         case CloseSocket(ref: ActorRef) =>
             Logger debug s"Received a CloseSocket: $ref"
             user ! DisconnectUser(ref.path.toSerializationFormat)
