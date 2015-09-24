@@ -29,7 +29,7 @@ class RegistrarActor extends Actor {
             val props = Props(new SocketActor(ref, self))
             sender ! props
         case JoinRoom(roomId: String, userName: String) =>
-            Logger debug s"Received a JoinRoom: $roomId"
+            Logger debug s"Received a JoinRoom: $roomId, $userName"
             user forward JoinRoom(roomId, userName)
         case LeaveRoom(roomId: String) =>
             Logger debug s"Received a LeaveRoom: $roomId"
@@ -49,6 +49,7 @@ class RegistrarActor extends Actor {
         case MessageIn(roomId: String, messageText: String) =>
             Logger debug s"Received a MessageIn: $roomId, $messageText"
             val actorName = sender().path.name
+            val socket = sender()
             user ? GetUser(actorName, roomId) onSuccess {
                 case Some(sentBy: User) => user ? GetUsers(roomId) onSuccess {
                     case Some(users: List[User]) => users foreach { sendTo: User =>
@@ -59,14 +60,14 @@ class RegistrarActor extends Actor {
                         }
                     }
                 }
-                case None => sender ! GlobalSystemMessage(s"You aren't in the room: $roomId")
+                case None => socket ! GlobalSystemMessage(s"You aren't in the room: $roomId")
             }
         case SystemMessage(roomId: String, messageText: String) =>
             // TODO get users in the room and send them a message
         case GlobalSystemMessage(messageText: String) =>
             // TODO send message to all users in registry
         case CloseSocket(ref: ActorRef) =>
-            Logger debug s"Received a Terminated: $ref"
+            Logger debug s"Received a CloseSocket: $ref"
             user ! DisconnectUser(ref.path.toSerializationFormat)
     }
 }

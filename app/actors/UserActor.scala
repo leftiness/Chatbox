@@ -149,20 +149,21 @@ class UserActor() extends Actor {
     
     def receive = {
         case JoinRoom(roomId: String, userName: String) =>
-            Logger debug s"Received a JoinRoom: $roomId"
+            Logger debug s"Received a JoinRoom: $roomId, $userName"
             val actorName = sender().path.name
             val actorPath = sender().path.toSerializationFormat
+            val ref = sender()
             registrar ? GetRoom(roomId) onSuccess {
                 case Some(room: Room) =>
                     val validName = findValidUserName(userName, roomId)
                     joinRoom(actorName, actorPath, roomId, validName) match {
                         case Some(userId: String) =>
                             registrar ! SystemMessage(roomId, s"User $validName has joined the room")
-                            sender ! NameUser(validName, roomId)
+                            ref ! NameUser(validName, roomId)
                         case None =>
-                            sender ! GlobalSystemMessage(s"Failed to join room $roomId with name $validName")
+                            ref ! GlobalSystemMessage(s"Failed to join room $roomId with name $validName")
                     }
-                case None => sender ! GlobalSystemMessage(s"Failed to join room: $roomId")
+                case None => ref ! GlobalSystemMessage(s"Failed to join room: $roomId")
             }
         case LeaveRoom(roomId: String) =>
             Logger debug s"Received a LeaveRoom: $roomId"
