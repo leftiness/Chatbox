@@ -28,11 +28,6 @@ class RegistrarActor extends Actor {
             Logger debug s"Received an OpenSocket: $ref"
             val props = Props(new SocketActor(ref, self))
             sender ! props
-            // TODO I switched the db to store actor names instead of paths because context.child is nicer.
-            // ... but I think I'll have to switch it back. The websocket answer on the controller takes this
-            // props that I send back and creates a new actor in a new context. It isn't a child of the registrar.
-            // Therefore, the registrar needs to be passed in as a parameter at creation, and the registrar will
-            // have to look up the socket actors by path instead of by name. Sigh.
         case JoinRoom(roomId: String) =>
             Logger debug s"Received a JoinRoom: $roomId"
             user forward JoinRoom(roomId)
@@ -61,9 +56,9 @@ class RegistrarActor extends Actor {
                 case Some(sentBy: User) => user ? GetUsers(roomId) onSuccess {
                     case Some(users: List[User]) => users foreach { sendTo: User =>
                         // TODO Apparently this List[User] is erased by type erasure... I'm not really sure what to do about that...
-                        context.child(sendTo.actorName) match {
-                            case Some(ref: ActorRef) => ref ! MessageOut(sentBy.userName, roomId, messageText)
-                            case None => // TODO There is no child with that actorName?
+                        context.actorSelection(sendTo.actorPath).resolveOne onSuccess {
+                            case ref: ActorRef => ref ! MessageOut(sentBy.userName, roomId, messageText)
+                            case _ => // TODO Could not find an actor with that path
                         }
                     }
                 }
@@ -72,7 +67,7 @@ class RegistrarActor extends Actor {
             // TODO get users in the room and send them a message
         case GlobalSystemMessage(messageText: String) =>
             // TODO send message to all users in registry
-        case Terminated(ref: ActorRef) =>
+        case CloseSocket(ref: ActorRef) =>
             Logger debug s"Received a Terminated: $ref"
             user ! DisconnectUser(ref.path.toSerializationFormat)
     }

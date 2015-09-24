@@ -5,6 +5,7 @@ import java.util.Date
 import akka.actor._
 
 case class OpenSocket(ref: ActorRef)
+case class CloseSocket(ref: ActorRef)
 
 case class JoinRoom(roomId: String)
 case class LeaveRoom(roomId: String)
@@ -25,5 +26,5 @@ case class SystemMessage(roomId: String, messageText: String)
 case class MessageIn(roomId: String, messageText: String)
 case class MessageOut(userName: String, roomId: String, messageText: String)
 
-case class User(actorName: String, roomId: String, userName: String, joinDate: Date, isAdmin: Boolean, isBanned: Boolean)
+case class User(userId: String, actorName: String, actorPath: String, roomId: String, userName: String, joinDate: Date, isAdmin: Boolean, isBanned: Boolean)
 case class Room(roomId: String, roomName: String)

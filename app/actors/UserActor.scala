@@ -28,23 +28,25 @@ class UserActor() extends Actor {
     
     object User {
         val parser: RowParser[User] = {
+            str("users.userId") ~
             str("users.actorName") ~
+            str("users.actorPath") ~
             str("users.roomId") ~
             str("users.userName") ~
             date("users.joinDate") ~
             bool("users.isAdmin") ~
             bool("users.isBanned") map {
-                case actorName ~ roomId ~ userName ~ joinDate ~ isAdmin ~ isBanned =>
-                    messages.User(actorName, roomId, userName, joinDate, isAdmin, isBanned)
+                case userId ~ actorName ~ actorPath ~ roomId ~ userName ~ joinDate ~ isAdmin ~ isBanned =>
+                    messages.User(userId, actorName, actorPath, roomId, userName, joinDate, isAdmin, isBanned)
             }
         }
     }
     
-    def joinRoom(actorName: String, roomId: String): Option[String] = {
+    def joinRoom(actorName: String, actorPath: String, roomId: String): Option[String] = {
         Logger debug s"Joining room: $roomId"
         DB.withConnection { implicit c =>
-            return SQL"insert into users (actorName, roomId) values ('$actorName', '$roomId')"
-                .executeInsert(str("users.actorName").singleOpt)
+            return SQL"insert into users (actorName, actorPath, roomId) values ('$actorName', '$actorPath', '$roomId')"
+                .executeInsert(str("users.userId").singleOpt)
         }
     }
     
@@ -59,7 +61,7 @@ class UserActor() extends Actor {
     def getUserByActorName(actorName: String, roomId: String): Option[User] = {
         Logger debug s"Getting user: $actorName, $roomId"
         DB.withConnection { implicit c =>
-            return SQL"""select (actorName, roomId, userName, joinDate, isAdmin, isBanned)
+            return SQL"""select (userId, actorName, actorPath, roomId, userName, joinDate, isAdmin, isBanned)
                 from users
                 where actorName = '$actorName'
                 and roomId = '$roomId'
@@ -71,7 +73,7 @@ class UserActor() extends Actor {
     def getUserByUserName(userName: String, roomId: String): Option[User] = {
         Logger debug s"Getting user: $userName, $roomId"
         DB withConnection { implicit c =>
-            return SQL"""select (actorName, roomId, userName, joinDate, isAdmin, isBanned)
+            return SQL"""select (userId, actorName, actorPath, roomId, userName, joinDate, isAdmin, isBanned)
                 from users
                 where userName = '$userName' and roomId = '$roomId'
                 """
@@ -82,7 +84,7 @@ class UserActor() extends Actor {
     def getUsersByRoomId(roomId: String): List[User] = {
         Logger debug s"Getting users in room: $roomId"
         DB.withConnection { implicit c =>
-            return SQL"""select (actorName, roomId, userName, joinDate, isAdmin, isBanned)
+            return SQL"""select (userId, actorName, actorPath, roomId, userName, joinDate, isAdmin, isBanned)
                 from users
                 where roomId = '$roomId'
                 """
@@ -93,7 +95,7 @@ class UserActor() extends Actor {
     def getUsersByActorName(actorName: String): List[User] = {
         Logger debug s"Getting users with path: $actorName"
         DB.withConnection { implicit c =>
-            return SQL"""select (actorName, roomId, userName, joinDate, isAdmin, isBanned)
+            return SQL"""select (userId, actorName, actorPath, roomId, userName, joinDate, isAdmin, isBanned)
                 from users
                 where actorName = '$actorName'
                 """
@@ -137,14 +139,16 @@ class UserActor() extends Actor {
         case JoinRoom(roomId: String) =>
             Logger debug s"Received a JoinRoom: $roomId"
             val actorName = sender().path.name
+            val actorPath = sender().path.toSerializationFormat
             registrar ? GetRoom(roomId) onSuccess {
                 case Some(room: Room) =>
-                    joinRoom(roomId, actorName) match {
-                        case Some(_: String) => registrar ! SystemMessage(roomId, s"User $actorName has joined the room")
+                    joinRoom(actorName, actorPath, roomId) match {
+                        case Some(userName: String) =>
+                            registrar ! SystemMessage(roomId, s"User $userName has joined the room")
+                            sender ! NameUser(userName, roomId)
                         case None => sender ! GlobalSystemMessage(s"Failed to join room: $roomId")
                     }
                 case None => sender ! GlobalSystemMessage(s"Failed to join room: $roomId")
-
             }
         case LeaveRoom(roomId: String) =>
             Logger debug s"Received a LeaveRoom: $roomId"
@@ -206,7 +210,7 @@ class UserActor() extends Actor {
                 case None => sender ! SystemMessage(roomId, s"User $userName does not exist")
             }
         case DisconnectUser(actorName: String) =>
-            Logger debug s"Received a DeleteUser: $actorName"
+            Logger debug s"Received a DisconnectUser: $actorName"
             getUsersByActorName(actorName) match {
                 case users: List[User] =>
                     users.map(u => (u.userName, u.roomId)) foreach { user =>

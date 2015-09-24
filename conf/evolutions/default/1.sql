@@ -9,13 +9,15 @@ create table rooms (
 );
 
 create table users (
+    userId bigint not null auto_increment,
     actorName varchar2 not null,
+    actorPath varchar2 not null,
     roomId bigint not null,
-    userName varchar2 not null default sysdate,
+    userName varchar2 not null default userId,
     joinDate timestamp not null default sysdate,
     isAdmin boolean not null default false,
     isBanned boolean not null default false,
-    primary key (actorPath, roomId)
+    primary key (userId)
     foreign key (roomId) references (rooms.roomId)
 );  
  

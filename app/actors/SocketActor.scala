@@ -14,7 +14,7 @@ class SocketActor(out: ActorRef, registrar: ActorRef) extends Actor {
     
     override def postStop() = {
         Logger info s"SocketActor $self is shutting down"
-        registrar ! Terminated(self)
+        registrar ! CloseSocket(self)
     }
     
     def receive = {
@@ -59,5 +59,7 @@ class SocketActor(out: ActorRef, registrar: ActorRef) extends Actor {
                 "messageType" -> JsString("messageOut")
             ))
             out ! json
+        case NameUser(userName: String, roomId: String) =>
+            // TODO Tell the user that he has a new username
     }
 }
