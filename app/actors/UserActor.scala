@@ -29,14 +29,14 @@ class UserActor() extends Actor {
     object User {
         val parser: RowParser[User] = {
             str("USERS.USER_ID") ~
-              str("USERS.ACTOR_NAME") ~
-              str("USERS.ACTOR_PATH") ~
-              str("USERS.ROOM_ID") ~
-              str("USERS.USER_NAME") ~
-              date("USERS.JOIN_DATE") ~
-              bool("USERS.IS_ADMIN") map {
-                case userId ~ actorName ~ actorPath ~ roomId ~ userName ~ joinDate ~ isAdmin =>
-                    messages.User(userId, actorName, actorPath, roomId, userName, joinDate, isAdmin)
+            str("USERS.ACTOR_NAME") ~
+            str("USERS.ACTOR_PATH") ~
+            str("USERS.ROOM_ID") ~
+            str("USERS.USER_NAME") ~
+            date("USERS.JOIN_DATE") ~
+            bool("USERS.IS_ADMIN") map {
+            case userId ~ actorName ~ actorPath ~ roomId ~ userName ~ joinDate ~ isAdmin =>
+                messages.User(userId, actorName, actorPath, roomId, userName, joinDate, isAdmin)
             }
         }
     }
