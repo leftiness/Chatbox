@@ -40,9 +40,6 @@ class RegistrarActor extends Actor {
         case PromoteUser(userName: String, roomId: String) =>
             Logger debug s"Received a PromoteUser: $userName, $roomId"
             user forward PromoteUser(userName, roomId)
-        case BanUser(userName: String, roomId: String) =>
-            Logger debug s"Received a BanUser: $userName, $roomId"
-            user forward BanUser(userName, roomId)
         case NewRoom(roomName: String) =>
             Logger debug s"Received a NewRoom: $roomName"
             room forward NewRoom(roomName)

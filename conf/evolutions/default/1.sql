@@ -16,8 +16,7 @@ create table users (
     userName varchar2 not null default userId,
     joinDate timestamp not null default sysdate,
     isAdmin boolean not null default false,
-    isBanned boolean not null default false,
-    primary key (userId)
+    primary key (userId),
     foreign key (roomId) references (rooms.roomId)
 );  
  

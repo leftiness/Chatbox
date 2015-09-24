@@ -34,10 +34,9 @@ class UserActor() extends Actor {
             str("users.roomId") ~
             str("users.userName") ~
             date("users.joinDate") ~
-            bool("users.isAdmin") ~
-            bool("users.isBanned") map {
-                case userId ~ actorName ~ actorPath ~ roomId ~ userName ~ joinDate ~ isAdmin ~ isBanned =>
-                    messages.User(userId, actorName, actorPath, roomId, userName, joinDate, isAdmin, isBanned)
+            bool("users.isAdmin") map {
+                case userId ~ actorName ~ actorPath ~ roomId ~ userName ~ joinDate ~ isAdmin =>
+                    messages.User(userId, actorName, actorPath, roomId, userName, joinDate, isAdmin)
             }
         }
     }
@@ -61,7 +60,7 @@ class UserActor() extends Actor {
     def getUserByActorName(actorName: String, roomId: String): Option[User] = {
         Logger debug s"Getting user: $actorName, $roomId"
         DB.withConnection { implicit c =>
-            return SQL"""select (userId, actorName, actorPath, roomId, userName, joinDate, isAdmin, isBanned)
+            return SQL"""select (userId, actorName, actorPath, roomId, userName, joinDate, isAdmin)
                 from users
                 where actorName = '$actorName'
                 and roomId = '$roomId'
@@ -73,7 +72,7 @@ class UserActor() extends Actor {
     def getUserByUserName(userName: String, roomId: String): Option[User] = {
         Logger debug s"Getting user: $userName, $roomId"
         DB withConnection { implicit c =>
-            return SQL"""select (userId, actorName, actorPath, roomId, userName, joinDate, isAdmin, isBanned)
+            return SQL"""select (userId, actorName, actorPath, roomId, userName, joinDate, isAdmin)
                 from users
                 where userName = '$userName' and roomId = '$roomId'
                 """
@@ -84,7 +83,7 @@ class UserActor() extends Actor {
     def getUsersByRoomId(roomId: String): List[User] = {
         Logger debug s"Getting users in room: $roomId"
         DB.withConnection { implicit c =>
-            return SQL"""select (userId, actorName, actorPath, roomId, userName, joinDate, isAdmin, isBanned)
+            return SQL"""select (userId, actorName, actorPath, roomId, userName, joinDate, isAdmin)
                 from users
                 where roomId = '$roomId'
                 """
@@ -95,7 +94,7 @@ class UserActor() extends Actor {
     def getUsersByActorName(actorName: String): List[User] = {
         Logger debug s"Getting users with path: $actorName"
         DB.withConnection { implicit c =>
-            return SQL"""select (userId, actorName, actorPath, roomId, userName, joinDate, isAdmin, isBanned)
+            return SQL"""select (userId, actorName, actorPath, roomId, userName, joinDate, isAdmin)
                 from users
                 where actorName = '$actorName'
                 """
@@ -120,18 +119,7 @@ class UserActor() extends Actor {
                 where userName = '$userName'"
                 and roomId = '$roomId'
                 """
-                .executeUpdate()
-        }
-    }
-    
-    def banUser(userName: String, roomId: String): Int = {
-        Logger debug s"Banning user: $userName, $roomId"
-        DB.withConnection { implicit c =>
-            return SQL"""update users set isBanned = true
-                where userName = '$userName'
-                and roomId = '$roomId'
-                """
-                .executeUpdate()
+              .executeUpdate()
         }
     }
     
@@ -193,19 +181,6 @@ class UserActor() extends Actor {
                         case _ => registrar ! SystemMessage(roomId, s"User $userName is now an admin")
                     }
                     case false => sender ! SystemMessage(roomId, "You must be an admin to promote someone")
-                }
-                case None => sender ! SystemMessage(roomId, s"User $userName does not exist")
-            }
-        case BanUser(userName: String, roomId: String) =>
-            Logger debug s"Received a BanUser: $userName"
-            val actorName = sender().path.name
-            getUserByActorName(actorName, roomId) match {
-                case Some(user: User) => user.isAdmin match {
-                    case true => banUser(userName, roomId) match {
-                        case 0 => sender ! SystemMessage(roomId, s"Failed to ban user $userName")
-                        case _ => registrar ! SystemMessage(roomId, s"User $userName is now banned")
-                    }
-                    case false => sender ! SystemMessage(roomId, "You must be an admin to ban someone")
                 }
                 case None => sender ! SystemMessage(roomId, s"User $userName does not exist")
             }

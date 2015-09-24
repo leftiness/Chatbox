@@ -26,5 +26,5 @@ case class SystemMessage(roomId: String, messageText: String)
 case class MessageIn(roomId: String, messageText: String)
 case class MessageOut(userName: String, roomId: String, messageText: String)
 
-case class User(userId: String, actorName: String, actorPath: String, roomId: String, userName: String, joinDate: Date, isAdmin: Boolean, isBanned: Boolean)
+case class User(userId: String, actorName: String, actorPath: String, roomId: String, userName: String, joinDate: Date, isAdmin: Boolean)
 case class Room(roomId: String, roomName: String)
