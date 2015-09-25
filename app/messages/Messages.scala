@@ -17,7 +17,7 @@ case class PromoteUser(userName: String, roomId: String)
 case class BanUser(userName: String, roomId: String)
 case class DisconnectUser(actorName: String)
 
-case class NewRoom(roomName: String)
+case class NewRoom(roomName: String, userName: String)
 case class GetRoom(roomId: String)
 case class NameRoom(roomId: String, roomName: String)
 case class DeleteRoom(roomId: String)

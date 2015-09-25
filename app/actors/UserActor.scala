@@ -135,9 +135,6 @@ class UserActor() extends Actor {
                 .executeUpdate()
         }
     }
-
-    // TODO Users and Rooms tables have limits on columns now. Before doing anything, check if the value
-    // is too long. If it is, trim it before doing the thing.
     
     def receive = {
         case JoinRoom(roomId: String, userName: String) =>

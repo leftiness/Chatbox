@@ -4,6 +4,7 @@ import akka.actor._
 import akka.pattern.ask
 import akka.util.Timeout
 import play.api.Logger
+import scala.collection.mutable.ListBuffer
 import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
 
@@ -21,6 +22,24 @@ class RegistrarActor extends Actor {
     
     override def postStop() = {
         Logger info s"RegistrarActor $self is shutting down"
+    }
+
+    def getRefs(roomId: Option[String]): List[ActorRef] = {
+        var output = new ListBuffer[ActorRef]
+        val message = roomId match {
+            case Some(id: String) => GetUsers(id)
+            case None => GetAllUsers()
+        }
+        user ? message onSuccess {
+            case Some(users: List[User]) => users foreach { sendTo: User =>
+                // TODO Apparently this List[User] is erased by type erasure... I'm not really sure what to do about that...
+                context.actorSelection(sendTo.actorPath).resolveOne onSuccess {
+                    case ref: ActorRef => output += ref
+                    case _ => // TODO This user doesn't exist?
+                }
+            }
+        }
+        output.toList
     }
 
     def receive = {
@@ -49,9 +68,9 @@ class RegistrarActor extends Actor {
         case GetAllUsers() =>
             Logger debug s"Received a GetAllUsers"
             user forward GetAllUsers()
-        case NewRoom(roomName: String) =>
+        case NewRoom(roomName: String, userName: String) =>
             Logger debug s"Received a NewRoom: $roomName"
-            room forward NewRoom(roomName)
+            room forward NewRoom(roomName, userName)
         case NameRoom(roomId: String, roomName: String) =>
             Logger debug s"Received a NameRoom: $roomId, $roomName"
             room forward NameRoom(roomId, roomName)
@@ -63,37 +82,21 @@ class RegistrarActor extends Actor {
             val actorName = sender().path.name
             val socket = sender()
             user ? GetUser(actorName, roomId) onSuccess {
-                case Some(sentBy: User) => user ? GetUsers(roomId) onSuccess {
-                    case Some(users: List[User]) => users foreach { sendTo: User =>
-                        // TODO Apparently this List[User] is erased by type erasure... I'm not really sure what to do about that...
-                        context.actorSelection(sendTo.actorPath).resolveOne onSuccess {
-                            case ref: ActorRef => ref ! MessageOut(sentBy.userName, roomId, messageText)
-                            case _ => // TODO Could not find an actor with that path
-                        }
-                    }
+                case Some(sentBy: User) =>
+                    val option = Option(roomId)
+                    getRefs(option) foreach { ref: ActorRef =>
+                    ref ! MessageOut(sentBy.userName, roomId, messageText)
                 }
                 case None => socket ! GlobalSystemMessage(s"You aren't in the room: $roomId")
             }
         case SystemMessage(roomId: String, messageText: String) =>
-            user ? GetUsers(roomId) onSuccess {
-                case Some(users: List[User]) => users foreach { sendTo: User =>
-                    // TODO This List[User] probably is also getting erased...
-                    context.actorSelection(sendTo.actorPath).resolveOne onSuccess {
-                        case ref: ActorRef => ref ! SystemMessage(roomId, messageText)
-                        case _ => // TODO Could not find an actor with that path...
-                    }
-                }
-                case None => // TODO There were no users in the room?
+            val option = Option(roomId)
+            getRefs(option) foreach { ref: ActorRef =>
+                ref ! SystemMessage(roomId, messageText)
             }
         case GlobalSystemMessage(messageText: String) =>
-            user ? GetAllUsers() onSuccess {
-                case Some(users: List[User]) => users foreach { sendTo: User =>
-                    context.actorSelection(sendTo.actorPath).resolveOne onSuccess {
-                        case ref: ActorRef => ref ! GlobalSystemMessage(messageText)
-                        case _ => // TODO Could not find an actor with that path...
-                    }
-                }
-                case None => // TODO There were no users at all?
+            getRefs(None) foreach { ref: ActorRef =>
+                ref ! GlobalSystemMessage(messageText)
             }
         case CloseSocket(ref: ActorRef) =>
             Logger debug s"Received a CloseSocket: $ref"
