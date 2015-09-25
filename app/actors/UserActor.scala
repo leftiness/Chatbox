@@ -135,25 +135,6 @@ class UserActor() extends Actor {
         }
     }
 
-    def findValidUserName(userName: String, roomId: String): String = {
-        Logger debug s"Trying to find a valid userName starting with $userName"
-        for (i <- 1 to 10) {
-            val attempt = i match {
-                case 1 => userName
-                case _ => userName + (System.currentTimeMillis / 1000).toString
-            }
-            getUserByUserName(attempt, roomId) match {
-                case Some(user: User) =>
-                case None => return attempt
-            }
-        }
-        userName
-        // TODO At the point where I return the original userName, I know that it will fail.
-        // So I'll just tell the user "Failed to join room with userName: $userName."
-        // He can try again to see if it was just a fluke, or maybe there was a real problem somewhere?
-        // Is there a better way for me to handle the case where I can't find a valid userName?
-    }
-
     // TODO Users and Rooms tables have limits on columns now. Before doing anything, check if the value
     // is too long. If it is, trim it before doing the thing.
     
@@ -165,7 +146,10 @@ class UserActor() extends Actor {
             val ref = sender()
             registrar ? GetRoom(roomId) onSuccess {
                 case Some(room: Room) =>
-                    val validName = findValidUserName(userName, roomId)
+                    val validName = getUserByUserName(userName, roomId) match {
+                        case Some(user: User) => userName + java.util.UUID.randomUUID.toString
+                        case None => userName
+                    }
                     joinRoom(actorName, actorPath, roomId, validName) match {
                         case Some(userId: String) =>
                             registrar ! SystemMessage(roomId, s"User $validName has joined the room")
