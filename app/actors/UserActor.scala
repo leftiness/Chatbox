@@ -15,6 +15,7 @@ import messages._
 
 class UserActor() extends Actor {
     val registrar = context.parent
+    val maxUserNameLength = 255
 
     implicit val timeout = Timeout(5.seconds)
     
@@ -147,8 +148,11 @@ class UserActor() extends Actor {
             registrar ? GetRoom(roomId) onSuccess {
                 case Some(room: Room) =>
                     val validName = getUserByUserName(userName, roomId) match {
-                        case Some(user: User) => userName + java.util.UUID.randomUUID.toString
-                        case None => userName
+                        case Some(user: User) =>
+                            val uuid = java.util.UUID.randomUUID.toString
+                            val name = userName.substring(0, maxUserNameLength - uuid.length)
+                            name + uuid
+                        case None => userName.substring(0, maxUserNameLength)
                     }
                     joinRoom(actorName, actorPath, roomId, validName) match {
                         case Some(userId: String) =>
@@ -168,7 +172,7 @@ class UserActor() extends Actor {
                         val userName = user.userName
                         registrar ! SystemMessage(roomId, s"User $userName has left the room")
                 }
-                case None => // TODO This user doesn't exist?
+                case None => sender ! GlobalSystemMessage(s"You are not a member of room $roomId")
             }
         case GetUser(actorName: String, roomId: String) =>
             Logger debug s"Received a GetUser: $actorName, $roomId"
@@ -182,17 +186,18 @@ class UserActor() extends Actor {
         case NameUser(userName: String, roomId: String) =>
             Logger debug s"Received a NameUser: $userName, $roomId"
             val actorName = sender().path.name
+            val validName = userName.substring(0, maxUserNameLength)
             getUserByActorName(actorName, roomId) match {
-                case Some(user: User) => getUserByUserName(userName, roomId) match {
-                    case Some(_: User) => sender ! SystemMessage(roomId, s"Name $userName is already taken")
-                    case None => nameUser(actorName, userName, roomId) match {
-                        case 0 => sender ! SystemMessage(roomId, s"Failed to take name $userName")
+                case Some(user: User) => getUserByUserName(validName, roomId) match {
+                    case Some(_: User) => sender ! SystemMessage(roomId, s"Name $validName is already taken")
+                    case None => nameUser(actorName, validName, roomId) match {
+                        case 0 => sender ! SystemMessage(roomId, s"Failed to take name $validName")
                         case _ =>
                             val oldUserName = user.userName
-                            registrar ! SystemMessage(roomId, s"User $oldUserName is now known as $userName")
+                            registrar ! SystemMessage(roomId, s"User $oldUserName is now known as $validName")
                     }
                 }
-                case None => // TODO This user doesn't exist?
+                case None => sender ! GlobalSystemMessage(s"You are not a member of room $roomId")
             }
         case PromoteUser(userName: String, roomId: String) =>
             Logger debug s"Received a PromoteUser: $userName"

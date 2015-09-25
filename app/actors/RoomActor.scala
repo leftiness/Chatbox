@@ -11,6 +11,7 @@ import messages._
 
 class RoomActor() extends Actor {
     val registrar = context.parent
+    val maxRoomNameLength = 255
     
     override def preStart() = {
         Logger info s"RoomActor $self is starting up"
@@ -65,13 +66,15 @@ class RoomActor() extends Actor {
     def receive = {
         case NewRoom(roomName: String) =>
             Logger debug s"Received a NewRoom: $roomName"
-            sender ! newRoom(roomName)
+            val validName = roomName.substring(0, maxRoomNameLength)
+            sender ! newRoom(validName)
         case GetRoom(roomId: String) =>
             Logger debug s"Received a GetRoom: $roomId"
             sender ! getRoom(roomId)
         case NameRoom(roomId: String, roomName: String) =>
             Logger debug s"Received a NameRoom: $roomId, $roomName"
-            sender ! nameRoom(roomId, roomName)
+            val validName = roomName.substring(0, maxRoomNameLength)
+            sender ! nameRoom(roomId, validName)
         case DeleteRoom(roomId: String) =>
             Logger debug s"Received a DeleteRoom: $roomId"
             sender ! deleteRoom(roomId)
