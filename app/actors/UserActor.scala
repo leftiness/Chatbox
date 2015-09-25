@@ -63,7 +63,7 @@ class UserActor() extends Actor {
     def getUserByActorName(actorName: String, roomId: Long): Option[User] = {
         Logger debug s"Getting user: $actorName, $roomId"
         DB.withConnection { implicit c =>
-            return SQL"""SELECT (USER_ID, ACTOR_NAME, ACTOR_PATH, ROOM_ID, USER_NAME, JOIN_DATE, IS_ADMIN)
+            return SQL"""SELECT USER_ID, ACTOR_NAME, ACTOR_PATH, ROOM_ID, USER_NAME, JOIN_DATE, IS_ADMIN
                 FROM USERS
                 WHERE ACTOR_NAME = $actorName
                 AND ROOM_ID = $roomId
@@ -75,7 +75,7 @@ class UserActor() extends Actor {
     def getUserByUserName(userName: String, roomId: Long): Option[User] = {
         Logger debug s"Getting user: $userName, $roomId"
         DB withConnection { implicit c =>
-            return SQL"""SELECT (USER_ID, ACTOR_NAME, ACTOR_PATH, ROOM_ID, USER_NAME, JOIN_DATE, IS_ADMIN)
+            return SQL"""SELECT USER_ID, ACTOR_NAME, ACTOR_PATH, ROOM_ID, USER_NAME, JOIN_DATE, IS_ADMIN
                 FROM USERS
                 WHERE USER_NAME = $userName AND ROOM_ID = $roomId
                 """
@@ -86,7 +86,7 @@ class UserActor() extends Actor {
     def getUsersByRoomId(roomId: Long): List[User] = {
         Logger debug s"Getting users in room: $roomId"
         DB.withConnection { implicit c =>
-            return SQL"""SELECT (USER_ID, ACTOR_NAME, ACTOR_PATH, ROOM_ID, USER_NAME, JOIN_DATE, IS_ADMIN)
+            return SQL"""SELECT USER_ID, ACTOR_NAME, ACTOR_PATH, ROOM_ID, USER_NAME, JOIN_DATE, IS_ADMIN
                 FROM USERS
                 WHERE ROOM_ID = $roomId
                 """
@@ -97,7 +97,7 @@ class UserActor() extends Actor {
     def getUsersByActorName(actorName: String): List[User] = {
         Logger debug s"Getting users with path: $actorName"
         DB.withConnection { implicit c =>
-            return SQL"""SELECT (USER_ID, ACTOR_NAME, ACTOR_PATH, ROOM_ID, USER_NAME, JOIN_DATE, IS_ADMIN)
+            return SQL"""SELECT USER_ID, ACTOR_NAME, ACTOR_PATH, ROOM_ID, USER_NAME, JOIN_DATE, IS_ADMIN
                 FROM USERS
                 WHERE ACTOR_NAME = $actorName
                 """
@@ -108,7 +108,7 @@ class UserActor() extends Actor {
     def getAllUsers: List[User] = {
         Logger debug s"Getting all users"
         DB.withConnection { implicit c =>
-            return SQL"""SELECT (USER_ID, ACTOR_NAME, ACTOR_PATH, ROOM_ID, USER_NAME, JOIN_DATE, IS_ADMIN)
+            return SQL"""SELECT USER_ID, ACTOR_NAME, ACTOR_PATH, ROOM_ID, USER_NAME, JOIN_DATE, IS_ADMIN
                 FROM USERS
                 """
                 .as(User.parser.*)

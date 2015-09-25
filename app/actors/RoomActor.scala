@@ -48,7 +48,7 @@ class RoomActor() extends Actor {
     def getRoom(roomId: Long): Option[Room] = {
         Logger debug s"Retrieving room: $roomId"
         DB.withConnection { implicit c =>
-            return SQL"SELECT (ROOM_ID, ROOM_NAME) FROM ROOMS WHERE ROOM_ID = $roomId"
+            return SQL"SELECT ROOM_ID, ROOM_NAME FROM ROOMS WHERE ROOM_ID = $roomId"
                 .as(Room.parser.singleOpt)
         }
     }
