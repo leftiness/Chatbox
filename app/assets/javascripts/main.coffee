@@ -45,7 +45,7 @@ _vm =
             this.message ''
     receive: (response) ->
         debug "Received data #{JSON.stringify response}"
-        switch response.type
+        switch response.messageType
             when 'messageOut'
                 this.messages.push response
     

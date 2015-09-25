@@ -9,14 +9,14 @@
         <div class="row col-xs-12" id="chatContainer">
             <div data-bind="foreach: messages">
                 <dl class="dl-horizontal">
-                    <dt data-bind="text: name"></dt>
-                    <dd data-bind="text: message"></dd>
+                    <dt data-bind="text: userName"></dt>
+                    <dd data-bind="text: messageText"></dd>
                 </dl>
             </div>
         </div>
     
         <div class="navbar navbar-default navbar-fixed-bottom">
-            <textarea data-bind="value: message, valueUpdate: 'afterkeydown', event: { keypress: keydown }" 
+            <textarea data-bind="value: message, valueUpdate: 'afterkeydown', event: { keypress: keydown }"
                 class="col-xs-10 col-sm-11 nav-height noResize" 
                 type="text" 
                 placeholder="Hello..."></textarea>
