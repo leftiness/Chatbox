@@ -23,7 +23,6 @@ class SocketActor(out: ActorRef, registrar: ActorRef) extends Actor {
             try {
                 (msg \ "messageType").get.as[String] match {
                     case "newRoom" =>
-                        //TODO /new command isn't working. The RoomActor gets an exception saying it can't find the column name...
                         Logger debug "Json is a newRoom"
                         val roomName = (msg \ "roomName").get.as[String]
                         val userName = (msg \ "userName").get.as[String]

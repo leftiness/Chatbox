@@ -81,6 +81,9 @@ class RegistrarActor extends Actor {
             Logger debug s"Received a MessageIn: $roomId, $messageText"
             val actorName = sender().path.name
             val socket = sender()
+            // TODO It seems that every socket actor's name is "handler."
+            // There's a unique number afterward, but sender.path.name doesn't give me that...
+            // Should I get rid of actorname and just use actorpath?
             user ? GetUser(actorName, roomId) onSuccess {
                 case Some(sentBy: User) =>
                     val option = Option(roomId)
