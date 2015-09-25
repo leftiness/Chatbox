@@ -23,6 +23,10 @@ _vm =
         if text.length > 0
             arr = text.split(' ')
             request = switch arr[0]
+                when '/new'
+                    roomName: arr[1]
+                    userName: arr[2]
+                    messageType: 'newRoom'
                 when '/join'
                     roomId: arr[1]
                     userName: arr[2]
@@ -36,6 +40,10 @@ _vm =
                     userName: arr[1]
                     roomId: this.room()
                     messageType: 'nameUser'
+                when '/promote'
+                    userName: arr[1]
+                    roomId: this.room()
+                    messageType: 'promoteUser'
                 else
                     roomId: this.room()
                     messageText: text
@@ -47,7 +55,16 @@ _vm =
         debug "Received data #{JSON.stringify response}"
         switch response.messageType
             when 'messageOut'
+                #TODO Messages should go to specific rooms...
                 this.messages.push response
+            when 'systemMessage'
+                this.messages.push response
+            when 'globalSystemMessage'
+                #TODO Message should go to all rooms
+                this.messages.push response
+            when 'nameUser'
+                #TODO Name should be in specific room...
+                this.name response.userName
     
 init_ws = ->
     def = Q.defer()
