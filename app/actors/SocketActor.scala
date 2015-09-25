@@ -23,35 +23,36 @@ class SocketActor(out: ActorRef, registrar: ActorRef) extends Actor {
             try {
                 (msg \ "messageType").get.as[String] match {
                     case "newRoom" =>
+                        //TODO /new command isn't working. The RoomActor gets an exception saying it can't find the column name...
                         Logger debug "Json is a newRoom"
                         val roomName = (msg \ "roomName").get.as[String]
                         val userName = (msg \ "userName").get.as[String]
                         registrar ! NewRoom(roomName, userName)
                     case "joinRoom" =>
-                        Logger debug "JSON is a join"
-                        val roomId = (msg \ "roomId").get.as[String]
+                        Logger debug "JSON is a joinRoom"
+                        val roomId = (msg \ "roomId").get.as[Long]
                         val userName = (msg \ "userName").get.as[String]
                         registrar ! JoinRoom(roomId, userName)
                     case "leaveRoom" =>
-                        Logger debug "JSON is a leave"
-                        val roomId = (msg \ "roomId").get.as[String]
+                        Logger debug "JSON is a leaveRoom"
+                        val roomId = (msg \ "roomId").get.as[Long]
                         registrar ! LeaveRoom(roomId)
                     case "disconnectUser" =>
-                        Logger debug "Json is a leave"
+                        Logger debug "Json is a disconnectUser"
                         registrar ! DisconnectUser(self.path.name)
                     case "nameUser" =>
-                        Logger debug "JSON is a name"
+                        Logger debug "JSON is a nameUser"
                         val userName = (msg \ "userName").get.as[String]
-                        val roomId = (msg \ "roomId").get.as[String]
+                        val roomId = (msg \ "roomId").get.as[Long]
                         registrar ! NameUser(userName, roomId)
                     case "promoteUser" =>
                         Logger debug "JSON is a promoteUser"
                         val userName = (msg \ "userName").get.as[String]
-                        val roomId = (msg \ "roomId").get.as[String]
+                        val roomId = (msg \ "roomId").get.as[Long]
                         registrar ! PromoteUser(userName, roomId)
                     case "messageIn" =>
-                        Logger debug s"JSON is a message"
-                        val roomId = (msg \ "roomId").get.as[String]
+                        Logger debug s"JSON is a messageIn"
+                        val roomId = (msg \ "roomId").get.as[Long]
                         val messageText = (msg \ "messageText").get.as[String]
                         registrar ! MessageIn(roomId, messageText)
                 }
@@ -64,27 +65,28 @@ class SocketActor(out: ActorRef, registrar: ActorRef) extends Actor {
                     ))
                     out ! json
             }
-        case MessageOut(userName: String, roomId: String, messageText: String) =>
+        case MessageOut(userName: String, roomId: Long, messageText: String) =>
             Logger debug s"Received a MessageOut: $userName, $roomId, $messageText"
             val json: JsValue = JsObject(Seq(
                 "userName" -> JsString(userName),
-                "roomId" -> JsString(roomId),
+                "roomId" -> JsNumber(roomId),
                 "messageText" -> JsString(messageText),
                 "messageType" -> JsString("messageOut")
             ))
             out ! json
-        case NameUser(userName: String, roomId: String) =>
+        case NameUser(userName: String, roomId: Long) =>
             Logger debug s"Received a NameUser: $userName, $roomId"
             val json: JsValue = JsObject(Seq(
                 "userName" -> JsString(userName),
-                "roomId" -> JsString(roomId),
+                "roomId" -> JsNumber(roomId),
                 "messageType" -> JsString("nameUser")
             ))
             out ! json
-        case SystemMessage(roomId: String, messageText: String) =>
+        case SystemMessage(roomId: Long, messageText: String) =>
             Logger debug s"Received a SystemMessage: $roomId, $messageText"
             val json: JsValue = JsObject(Seq(
-                "roomId" -> JsString(roomId),
+                "userName" -> JsString("System"),
+                "roomId" -> JsNumber(roomId),
                 "messageText" -> JsString(messageText),
                 "messageType" -> JsString("systemMessage")
             ))
@@ -92,6 +94,7 @@ class SocketActor(out: ActorRef, registrar: ActorRef) extends Actor {
         case GlobalSystemMessage(messageText: String) =>
             Logger debug s"Received a GlobalSystemMessage: $messageText"
             val json: JsValue = JsObject(Seq(
+                "userName" -> JsString("System"),
                 "messageText" -> JsString(messageText),
                 "messageType" -> JsString("globalSystemMessage")
             ))

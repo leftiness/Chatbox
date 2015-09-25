@@ -24,10 +24,10 @@ class RegistrarActor extends Actor {
         Logger info s"RegistrarActor $self is shutting down"
     }
 
-    def getRefs(roomId: Option[String]): List[ActorRef] = {
+    def getRefs(roomId: Option[Long]): List[ActorRef] = {
         var output = new ListBuffer[ActorRef]
         val message = roomId match {
-            case Some(id: String) => GetUsers(id)
+            case Some(id: Long) => GetUsers(id)
             case None => GetAllUsers()
         }
         user ? message onSuccess {
@@ -47,22 +47,22 @@ class RegistrarActor extends Actor {
             Logger debug s"Received an OpenSocket: $ref"
             val props = Props(new SocketActor(ref, self))
             sender ! props
-        case JoinRoom(roomId: String, userName: String) =>
+        case JoinRoom(roomId: Long, userName: String) =>
             Logger debug s"Received a JoinRoom: $roomId, $userName"
             user forward JoinRoom(roomId, userName)
-        case LeaveRoom(roomId: String) =>
+        case LeaveRoom(roomId: Long) =>
             Logger debug s"Received a LeaveRoom: $roomId"
             user forward LeaveRoom(roomId)
-        case NameUser(userName: String, roomId: String) =>
+        case NameUser(userName: String, roomId: Long) =>
             Logger debug s"Received a NameUser: $userName, $roomId"
             user forward NameUser(userName, roomId)
-        case PromoteUser(userName: String, roomId: String) =>
+        case PromoteUser(userName: String, roomId: Long) =>
             Logger debug s"Received a PromoteUser: $userName, $roomId"
             user forward PromoteUser(userName, roomId)
-        case GetUser(actorName: String, roomId: String) =>
+        case GetUser(actorName: String, roomId: Long) =>
             Logger debug s"Received a GetUser: $actorName, $roomId"
             user forward GetUser(actorName, roomId)
-        case GetUsers(roomId: String) =>
+        case GetUsers(roomId: Long) =>
             Logger debug s"Received a GetUsers: $roomId"
             user forward GetUsers(roomId)
         case GetAllUsers() =>
@@ -71,13 +71,13 @@ class RegistrarActor extends Actor {
         case NewRoom(roomName: String, userName: String) =>
             Logger debug s"Received a NewRoom: $roomName"
             room forward NewRoom(roomName, userName)
-        case NameRoom(roomId: String, roomName: String) =>
+        case NameRoom(roomId: Long, roomName: String) =>
             Logger debug s"Received a NameRoom: $roomId, $roomName"
             room forward NameRoom(roomId, roomName)
-        case GetRoom(roomId: String) =>
+        case GetRoom(roomId: Long) =>
             Logger debug s"Received a GetRoom: $roomId"
             room forward GetRoom(roomId)
-        case MessageIn(roomId: String, messageText: String) =>
+        case MessageIn(roomId: Long, messageText: String) =>
             Logger debug s"Received a MessageIn: $roomId, $messageText"
             val actorName = sender().path.name
             val socket = sender()
@@ -89,7 +89,7 @@ class RegistrarActor extends Actor {
                 }
                 case None => socket ! GlobalSystemMessage(s"You aren't in the room: $roomId")
             }
-        case SystemMessage(roomId: String, messageText: String) =>
+        case SystemMessage(roomId: Long, messageText: String) =>
             val option = Option(roomId)
             getRefs(option) foreach { ref: ActorRef =>
                 ref ! SystemMessage(roomId, messageText)

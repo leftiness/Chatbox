@@ -29,10 +29,10 @@ class UserActor() extends Actor {
 
     object User {
         val parser: RowParser[User] = {
-            str("USERS.USER_ID") ~
+            long("USERS.USER_ID") ~
             str("USERS.ACTOR_NAME") ~
             str("USERS.ACTOR_PATH") ~
-            str("USERS.ROOM_ID") ~
+            long("USERS.ROOM_ID") ~
             str("USERS.USER_NAME") ~
             date("USERS.JOIN_DATE") ~
             bool("USERS.IS_ADMIN") map {
@@ -42,17 +42,17 @@ class UserActor() extends Actor {
         }
     }
 
-    def joinRoom(actorName: String, actorPath: String, roomId: String, userName: String): Option[String] = {
+    def joinRoom(actorName: String, actorPath: String, roomId: Long, userName: String): Option[Long] = {
         Logger debug s"Joining room: $roomId"
         DB.withConnection { implicit c =>
             return SQL"""INSERT INTO USERS (ACTOR_NAME, ACTOR_PATH, ROOM_ID, USER_NAME)
                 VALUES ($actorName, $actorPath, $roomId, $userName)
                 """
-                .executeInsert(str("USERS.USER_ID").singleOpt)
+                .executeInsert()
         }
     }
 
-    def leaveRoom(actorName: String, roomId: String): Int = {
+    def leaveRoom(actorName: String, roomId: Long): Int = {
         Logger debug s"Leaving room: $actorName, $roomId"
         DB.withConnection { implicit c =>
             return SQL"DELETE FROM USERS WHERE ACTOR_NAME = $actorName AND ROOM_ID = $roomId"
@@ -60,7 +60,7 @@ class UserActor() extends Actor {
         }
     }
 
-    def getUserByActorName(actorName: String, roomId: String): Option[User] = {
+    def getUserByActorName(actorName: String, roomId: Long): Option[User] = {
         Logger debug s"Getting user: $actorName, $roomId"
         DB.withConnection { implicit c =>
             return SQL"""SELECT (USER_ID, ACTOR_NAME, ACTOR_PATH, ROOM_ID, USER_NAME, JOIN_DATE, IS_ADMIN)
@@ -72,7 +72,7 @@ class UserActor() extends Actor {
         }
     }
 
-    def getUserByUserName(userName: String, roomId: String): Option[User] = {
+    def getUserByUserName(userName: String, roomId: Long): Option[User] = {
         Logger debug s"Getting user: $userName, $roomId"
         DB withConnection { implicit c =>
             return SQL"""SELECT (USER_ID, ACTOR_NAME, ACTOR_PATH, ROOM_ID, USER_NAME, JOIN_DATE, IS_ADMIN)
@@ -83,7 +83,7 @@ class UserActor() extends Actor {
         }
     }
 
-    def getUsersByRoomId(roomId: String): List[User] = {
+    def getUsersByRoomId(roomId: Long): List[User] = {
         Logger debug s"Getting users in room: $roomId"
         DB.withConnection { implicit c =>
             return SQL"""SELECT (USER_ID, ACTOR_NAME, ACTOR_PATH, ROOM_ID, USER_NAME, JOIN_DATE, IS_ADMIN)
@@ -115,7 +115,7 @@ class UserActor() extends Actor {
         }
     }
 
-    def nameUser(actorName: String, userName: String, roomId: String): Int = {
+    def nameUser(actorName: String, userName: String, roomId: Long): Int = {
         Logger debug s"Renaming user: $actorName, $userName, $roomId"
         DB.withConnection { implicit c =>
             return SQL"""UPDATE USERS SET USER_NAME = $userName
@@ -125,7 +125,7 @@ class UserActor() extends Actor {
         }
     }
 
-    def promoteUser(userName: String, roomId: String): Int = {
+    def promoteUser(userName: String, roomId: Long): Int = {
         Logger debug s"Promoting user: $userName, $roomId"
         DB.withConnection { implicit c =>
             return SQL"""UPDATE USERS SET IS_ADMIN = TRUE
@@ -137,7 +137,7 @@ class UserActor() extends Actor {
     }
     
     def receive = {
-        case JoinRoom(roomId: String, userName: String) =>
+        case JoinRoom(roomId: Long, userName: String) =>
             Logger debug s"Received a JoinRoom: $roomId, $userName"
             val actorName = sender().path.name
             val actorPath = sender().path.toSerializationFormat
@@ -147,19 +147,26 @@ class UserActor() extends Actor {
                     val validName = getUserByUserName(userName, roomId) match {
                         case Some(user: User) =>
                             val uuid = java.util.UUID.randomUUID.toString
-                            val name = userName.substring(0, maxUserNameLength - uuid.length)
+                            val name = userName.length match {
+                                case length if length >= maxUserNameLength =>
+                                    userName.substring(0, maxUserNameLength - uuid.length)
+                                case _ => userName
+                            }
                             name + uuid
-                        case None => userName.substring(0, maxUserNameLength)
+                        case None => userName.length match {
+                            case length if length >= maxUserNameLength => userName.substring(0, maxUserNameLength)
+                            case _ => userName
+                        }
                     }
                     joinRoom(actorName, actorPath, roomId, validName) match {
-                        case Some(userId: String) =>
+                        case Some(userId: Long) =>
                             registrar ! SystemMessage(roomId, s"User $validName has joined the room")
                             ref ! NameUser(validName, roomId)
                         case None => ref ! GlobalSystemMessage(s"Failed to join room $roomId with name $validName")
                     }
                 case None => ref ! GlobalSystemMessage(s"Failed to join room: $roomId")
             }
-        case LeaveRoom(roomId: String) =>
+        case LeaveRoom(roomId: Long) =>
             Logger debug s"Received a LeaveRoom: $roomId"
             val actorName = sender().path.name
             getUserByActorName(actorName, roomId) match {
@@ -171,19 +178,22 @@ class UserActor() extends Actor {
                 }
                 case None => sender ! GlobalSystemMessage(s"You are not a member of room $roomId")
             }
-        case GetUser(actorName: String, roomId: String) =>
+        case GetUser(actorName: String, roomId: Long) =>
             Logger debug s"Received a GetUser: $actorName, $roomId"
             sender ! getUserByActorName(actorName, roomId)
-        case GetUsers(roomId: String) =>
+        case GetUsers(roomId: Long) =>
             Logger debug s"Received a GetUsers: $roomId"
             sender ! getUsersByRoomId(roomId)
         case GetAllUsers() =>
             Logger debug s"Received a GetAllUsers"
             sender ! getAllUsers
-        case NameUser(userName: String, roomId: String) =>
+        case NameUser(userName: String, roomId: Long) =>
             Logger debug s"Received a NameUser: $userName, $roomId"
             val actorName = sender().path.name
-            val validName = userName.substring(0, maxUserNameLength)
+            val validName = userName.length match {
+                case _ if userName.length >= maxUserNameLength => userName.substring(0, maxUserNameLength)
+                case _ => userName
+            }
             getUserByActorName(actorName, roomId) match {
                 case Some(user: User) => getUserByUserName(validName, roomId) match {
                     case Some(_: User) => sender ! SystemMessage(roomId, s"Name $validName is already taken")
@@ -196,7 +206,7 @@ class UserActor() extends Actor {
                 }
                 case None => sender ! GlobalSystemMessage(s"You are not a member of room $roomId")
             }
-        case PromoteUser(userName: String, roomId: String) =>
+        case PromoteUser(userName: String, roomId: Long) =>
             Logger debug s"Received a PromoteUser: $userName"
             val actorName = sender().path.name
             getUserByActorName(actorName, roomId) match {

@@ -1,6 +1,5 @@
 #TODO Rooms in the UI
 #TODO knockout for keyup event to send message
-#TODO Receive nameUser, systemMessage, globalSystemMessage, etc...
 
 _debug = true
 
@@ -9,7 +8,7 @@ debug = (message) ->
         console.log message
 
 _vm =
-    room: ko.observable('12345')
+    room: ko.observable(12345)
     name: ko.observable('Anonymous12345')
     messages: ko.observableArray()
     message: ko.observable()

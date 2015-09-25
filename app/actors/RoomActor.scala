@@ -29,31 +29,31 @@ class RoomActor() extends Actor {
     
     object Room {
         val parser: RowParser[Room] = {
-            str("ROOMS.ROOM_ID") ~
+            long("ROOMS.ROOM_ID") ~
             str("ROOMS.ROOM_NAME") map {
                 case roomId ~ roomName => messages.Room(roomId, roomName)
             }
         }
     }
     
-    def newRoom(roomName: String): Option[String] = {
+    def newRoom(roomName: String): Option[Long] = {
         // TODO Use a string hash instead of an incrementing bigint for room ids
         Logger debug s"Creating new room: $roomName"
         DB.withConnection { implicit c =>
             return SQL"INSERT INTO ROOMS (ROOM_NAME) values ($roomName)"
-                .executeInsert(str("ROOMS.ROOM_ID").singleOpt)
+                .executeInsert()
         }
     }
     
-    def getRoom(roomId: String): Option[Room] = {
+    def getRoom(roomId: Long): Option[Room] = {
         Logger debug s"Retrieving room: $roomId"
         DB.withConnection { implicit c =>
-            return SQL"SELECT (ROOM_ID) FROM ROOMS WHERE ROOM_ID = $roomId"
+            return SQL"SELECT (ROOM_ID, ROOM_NAME) FROM ROOMS WHERE ROOM_ID = $roomId"
                 .as(Room.parser.singleOpt)
         }
     }
     
-    def nameRoom(roomId: String, roomName: String): Int = {
+    def nameRoom(roomId: Long, roomName: String): Int = {
         Logger debug s"Renaming room: $roomId, $roomName"
         DB.withConnection { implicit c =>
             return SQL"UPDATE ROOMS SET ROOM_NAME = $roomName WHERE ROOM_ID = $roomId"
@@ -61,7 +61,7 @@ class RoomActor() extends Actor {
         }
     }
     
-    def deleteRoom(roomId: String): Int = {
+    def deleteRoom(roomId: Long): Int = {
         Logger debug s"Deleting room: $roomId"
         DB.withConnection { implicit c =>
             return SQL"DELETE FROM ROOMS WHERE ROOM_ID = $roomId"
@@ -72,20 +72,27 @@ class RoomActor() extends Actor {
     def receive = {
         case NewRoom(roomName: String, userName: String) =>
             Logger debug s"Received a NewRoom: $roomName"
-            val validName = roomName.substring(0, maxRoomNameLength)
+            val validName = roomName.length match {
+                case _ if roomName.length > maxRoomNameLength => roomName.substring(0, maxRoomNameLength)
+                case _ => roomName
+            }
             newRoom(validName) match {
-                case Some(roomId: String) =>
-                    registrar forward JoinRoom(roomId, userName)
-                    registrar ! SystemMessage(roomId, s"Room $validName has been created")
-                    sender ! NameRoom(roomId, validName)
+                case Some(roomId: Long) =>
+                    val id = roomId
+                    registrar forward JoinRoom(id, userName)
+                    registrar ! SystemMessage(id, s"Room $validName has been created")
+                    sender ! NameRoom(id, validName)
                 case None => sender ! GlobalSystemMessage(s"Failed to create room $validName")
             }
-        case GetRoom(roomId: String) =>
+        case GetRoom(roomId: Long) =>
             Logger debug s"Received a GetRoom: $roomId"
             sender ! getRoom(roomId)
-        case NameRoom(roomId: String, roomName: String) =>
+        case NameRoom(roomId: Long, roomName: String) =>
             Logger debug s"Received a NameRoom: $roomId, $roomName"
-            val validName = roomName.substring(0, maxRoomNameLength)
+            val validName = roomName.length match {
+                case _ if roomName.length > maxRoomNameLength => roomName.substring(0, maxRoomNameLength)
+                case _ => roomName
+            }
             val ref = sender()
             registrar ? GetUser(ref.path.name, roomId) onSuccess {
                 case Some(user: User) => user.isAdmin match {
@@ -99,7 +106,7 @@ class RoomActor() extends Actor {
             nameRoom(roomId, validName) match {
                 case 0 => registrar ! SystemMessage
             }
-        case DeleteRoom(roomId: String) =>
+        case DeleteRoom(roomId: Long) =>
             Logger debug s"Received a DeleteRoom: $roomId"
             sender ! deleteRoom(roomId)
     }
