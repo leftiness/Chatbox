@@ -23,36 +23,36 @@ class SocketActor(out: ActorRef, registrar: ActorRef) extends Actor {
             try {
                 (msg \ "messageType").get.as[String] match {
                     case "newRoom" =>
-                        Logger debug "Json is a newRoom"
-                        val roomName = (msg \ "roomName").get.as[String]
-                        val userName = (msg \ "userName").get.as[String]
+                        Logger debug "JSON is a newRoom"
+                        val roomName = (msg \ "roomName").as[String]
+                        val userName = (msg \ "userName").as[String]
                         registrar ! NewRoom(roomName, userName)
                     case "joinRoom" =>
                         Logger debug "JSON is a joinRoom"
-                        val roomId = (msg \ "roomId").get.as[Long]
-                        val userName = (msg \ "userName").get.as[String]
+                        val roomId = (msg \ "roomId").as[Long]
+                        val userName = (msg \ "userName").as[String]
                         registrar ! JoinRoom(roomId, userName)
                     case "leaveRoom" =>
                         Logger debug "JSON is a leaveRoom"
-                        val roomId = (msg \ "roomId").get.as[Long]
+                        val roomId = (msg \ "roomId").as[Long]
                         registrar ! LeaveRoom(roomId)
                     case "disconnectUser" =>
                         Logger debug "Json is a disconnectUser"
                         registrar ! DisconnectUser(self.path.name)
                     case "nameUser" =>
                         Logger debug "JSON is a nameUser"
-                        val userName = (msg \ "userName").get.as[String]
-                        val roomId = (msg \ "roomId").get.as[Long]
+                        val userName = (msg \ "userName").as[String]
+                        val roomId = (msg \ "roomId").as[Long]
                         registrar ! NameUser(userName, roomId)
                     case "promoteUser" =>
                         Logger debug "JSON is a promoteUser"
-                        val userName = (msg \ "userName").get.as[String]
-                        val roomId = (msg \ "roomId").get.as[Long]
+                        val userName = (msg \ "userName").as[String]
+                        val roomId = (msg \ "roomId").as[Long]
                         registrar ! PromoteUser(userName, roomId)
                     case "messageIn" =>
                         Logger debug s"JSON is a messageIn"
-                        val roomId = (msg \ "roomId").get.as[Long]
-                        val messageText = (msg \ "messageText").get.as[String]
+                        val roomId = (msg \ "roomId").as[Long]
+                        val messageText = (msg \ "messageText").as[String]
                         registrar ! MessageIn(roomId, messageText)
                 }
             } catch {
