@@ -8,8 +8,8 @@ debug = (message) ->
         console.log message
 
 _vm =
-    room: ko.observable(12345)
-    name: ko.observable('Anonymous12345')
+    room: ko.observable()
+    name: ko.observable()
     messages: ko.observableArray()
     message: ko.observable()
     keydown: (data, event) ->
@@ -65,6 +65,7 @@ _vm =
             when 'nameUser'
                 #TODO Name should be in specific room...
                 this.name response.userName
+                this.room response.roomId
     
 init_ws = ->
     def = Q.defer()
